@@ -119,7 +119,7 @@ md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
 
 | 插件 | 提供 |
 |---|---|
-| `local-purge-ui` | 输入框上方「**清洗**」胶囊 + 清洗面板（看真实状态 / 补丁计数 / 逐条明细，应用 / 还原 / 复制状态） |
+| `local-purge-ui` | 输入框上方「**清洗**」胶囊 + 一行**状态条**（点开面板）+ 清洗面板（已生效 / 待应用 / 本机无目标 三个 metric、按原因分组的未生效明细，应用 / 还原 / 刷新 / 复制状态） |
 | `local-purge-more` | 「**破甲内容**」胶囊 + 3 个面板（提示词 / 规则集 / 技能库） |
 
 ```sh
@@ -149,6 +149,49 @@ dsh-purge --edit        # 编辑注入文案
 
 **重要**：`--apply` 之后必须**重启 DSH** 才生效（引擎启动时把代码读进内存）。
 停用插件（App 里拨开关）**不会**撤销补丁——补丁是磁盘上的改动，必须 `--revert`。
+
+```sh
+dsh-purge --status --json   # 机器可读：patch_tally（7 分类 + na + total）与逐条 rows
+dsh-purge --check           # 只算不写：这次 apply 会动哪些文件、哪些补丁对不上
+```
+
+---
+
+## 补丁状态（7 分类）
+
+每条补丁先按它的**所有目标文件**判出一个分类，再汇总成 `patch_tally`
+（`--status --json`、面板、状态条读的都是同一份快照）。分类顺序就是面板上的展示顺序：
+
+| 分类 | 含义 | 旧状态（本分支之前） |
+|---|---|---|
+| `applied` | 锚点已替换 / 目标文案已存在，不用再写 | `applied` |
+| `pending` | 要替换的原文还在，还没打上 | `pending` |
+| `partial` | 多文件补丁只落地了一部分 | `skipped`（一部分文件打上了） |
+| `drifted` | 命中补丁自己写的 `forbid` 标记：产物被别的改动弄脏，重打才有意义 | 以前没有这一档，只能报成 `skipped` |
+| `no_needle` | 文件能读，但搜不到要替换的那一句（宿主版本不同 / 已被别的补丁改写） | `skipped`、`unmatched` |
+| `no_file` | 目标文件登记了却读不到（被删 / 正在被替换） | `missing_file` |
+| `no_pkg` | 这套宿主压根没装该补丁指向的包 | `missing_file`（键一个都没登记） |
+| `na` | 当前宿主不需要该补丁（第 8 个桶：不计入 7 分类，但计入 `total`） | `na` |
+
+一句话：**旧的 6 类（`applied` / `pending` / `skipped` / `unmatched` / `missing_file` / `na`）没有消失，
+只是 `skipped` 被拆成了 `partial`、`drifted`、`no_needle`，`missing_file` 被拆成了 `no_file` 与 `no_pkg`。**
+以前一个「跳过」同时盖了四种完全不同的修法：要重打的、只打了一半的、版本对不上的、包没装的。
+
+旧字段（`patches_applied` / `patches_pending` / `patches_skipped` / `patches_na` / `patches_total`、
+`patch_status`、`display_*`）全部保留、数值不变，老脚本和老的 `--status` 文本照旧能读。
+
+### 面板与状态条的读数从哪来
+
+- **面板**：`gatherState()` 输出的 `patch_tally`（7 分类 + `na` + `total`）与 `patch_rows`
+  （逐条：`id` / `name` / `category` / `reason` / `files`，不含文件正文）。
+- **三个 metric**：已生效 = `tally.applied`；待应用 = `tally.pending`；
+  本机无目标 = `tally.no_pkg + tally.na`（这套宿主没有它的位置）。
+- **未生效明细**：按 6 个非 `applied` 分类分组，每组一行小标题 + 最多 10 条，超出写「另有 N 条」，
+  整张列表一次最多 50 行（原生视图协议上限）。`applied` 与 `na` 不进明细。
+- **刷新**：面板的「刷新」会先 `invalidatePatchCache()`，再用 `gatherState({ fresh: true })` 重扫，
+  所以看到的是此刻的磁盘，不是 30 秒缓存。检测缓存的键含宿主目录，换宿主不会串。
+- **状态条**：只读插件进程内那份快照（面板上一次读取的结果），每 20 秒重画一行，
+  **不扫磁盘、不触发检测**。冷启动时显示「清洗 · 待读取」，打开一次面板后就有数。
 
 ---
 

@@ -665,7 +665,9 @@ async function refreshAll(panelId, result) {
   const key = placeholderKeyOf(panelId)
   const loader = loaderOf(panelId)
   try {
-    dropCache(key)
+    // 三个面板的缓存一起丢掉：写完 / 刷新之后，别的面板那几行显示的是新值还是 4 秒前的旧值，
+    // 取决于这里有没有丢干净。只丢自己那份的话，「刷新」按钮看起来就像没生效。
+    dropCache('prompt', 'rules', 'skills')
     const [here, cross] = await Promise.all([
       Promise.resolve().then(loader),
       crossPatches(panelId),
@@ -688,6 +690,16 @@ function loaderOf(panelId) {
   if (panelId === 'prompt-panel') return collectPrompt
   if (panelId === 'rules-panel') return collectRules
   return collectSkills
+}
+
+/**
+ * 面板上的「刷新」：原来回的是 `() => ({ refresh: true })`——那只是让视图重取一次，
+ * 数据还走 4 秒缓存，等于没刷新。这里改成丢缓存 → 真读一遍 → 用 patch 把新数据推回面板。
+ */
+async function manualRefresh(panelId, event) {
+  const text = loc(event) ? 'Refreshed' : '已刷新'
+  const fresh = await refreshAll(panelId, text)
+  return { ...fresh, toast: fresh.toast || text }
 }
 
 // ─────────────────────── 面板定义 ───────────────────────
@@ -835,7 +847,7 @@ export function apply(ctx) {
             return { toast: toastText(`复制失败：${humanError(error)}`) }
           }
         },
-        refresh: () => ({ refresh: true }),
+        refresh: (scope, event) => manualRefresh('prompt-panel', event),
       },
     })
 
@@ -870,7 +882,7 @@ export function apply(ctx) {
             return { toast: toastText(`复制失败：${humanError(error)}`) }
           }
         },
-        refresh: () => ({ refresh: true }),
+        refresh: (scope, event) => manualRefresh('rules-panel', event),
       },
     })
 
@@ -886,7 +898,7 @@ export function apply(ctx) {
             return { toast: toastText(`复制失败：${humanError(error)}`) }
           }
         },
-        refresh: () => ({ refresh: true }),
+        refresh: (scope, event) => manualRefresh('skills-panel', event),
       },
     })
   })

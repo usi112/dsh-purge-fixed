@@ -36,6 +36,17 @@
           "icon": "wrench"
         }
       ],
+      "composer.strip": [
+        {
+          "id": "purge-strip",
+          "icon": "wrench",
+          "text": {
+            "zh": "清洗",
+            "en": "Purge"
+          },
+          "panel": "purge-panel"
+        }
+      ],
       "panels": [
         {
           "id": "purge-panel",
