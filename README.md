@@ -1,4 +1,4 @@
-# dsh-purge 1.1.75+upstream.1.1.71 — 基于上游 1.1.71 的修复分支
+# dsh-purge 1.1.76+upstream.1.1.71 — 基于上游 1.1.71 的修复分支
 
 这是我给自己手机折腾出来的一个分支。上游 [dsh-purge](https://deepseek.stream/plugins/dsh-purge) 是 小杨 写的（MIT），
 在桌面跑得好好的，搬到 DSH Go（Android + proot）上装完就崩。我就一点点修过来，顺手把手机上看不到的那部分界面
@@ -12,7 +12,7 @@
 我这边跑的环境：DSH Go App 1.0.15、DSH 0.2.2-rc.1、Node 24.22.1、proot Ubuntu 24.04。
 只在手机上真机验过，桌面和网页版能装能跑，但没做过同等强度的实测。
 
-版本号 `1.1.75+upstream.1.1.71`：加号后面是它基于的上游版本，前面是我这边的发布序号，两个不是一回事。
+版本号 `1.1.76+upstream.1.1.71`：加号后面是它基于的上游版本，前面是我这边的发布序号，两个不是一回事。
 每版干了什么写在 [release-notes.md](release-notes.md) 和 [Releases](https://github.com/usi112/dsh-purge-fixed/releases)；
 版本规则见 [docs/versioning.md](docs/versioning.md)。只改措辞或文档，不动版本号。
 

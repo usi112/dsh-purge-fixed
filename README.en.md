@@ -1,4 +1,4 @@
-# dsh-purge 1.1.75+upstream.1.1.71 — a fixed fork of upstream 1.1.71
+# dsh-purge 1.1.76+upstream.1.1.71 — a fixed fork of upstream 1.1.71
 
 This is a fork I put together for my own phone. Upstream [dsh-purge](https://deepseek.stream/plugins/dsh-purge)
 is by 小杨 (MIT) and works on desktop; on DSH Go (Android + proot) it broke the moment it was installed.
@@ -14,7 +14,7 @@ Two different things live in this plugin, and they behave differently:
 Tested on: DSH Go app 1.0.15, DSH 0.2.2-rc.1, Node 24.22.1, proot Ubuntu 24.04. Desktop and web install
 fine, but were not tested as hard.
 
-Version `1.1.75+upstream.1.1.71`: the part after `+` is the upstream release this fork is based on; the
+Version `1.1.76+upstream.1.1.71`: the part after `+` is the upstream release this fork is based on; the
 leading number is this fork's own release counter. They are not the same thing. Rules and examples live in
 [docs/versioning.md](docs/versioning.md); wording or doc-only changes do not bump the version.
 

@@ -1,3 +1,29 @@
+# 1.1.76+upstream.1.1.71
+
+> 数字部分是本分支序号，`+upstream.1.1.71` 是上游基线，规则见 [docs/versioning.md](docs/versioning.md)。
+
+## 中文
+
+- **重锚覆盖层（新能力）**：引擎换版后 needle 会漂移。现在可以不改 `lib/core.js`，用
+  `$DSH_HOME/purge-reanchor.json` 在加载期覆盖补丁表，四个字段：
+  `patterns`（按 id+序号换 needle）、`drop`（丢掉失效条目）、`patchReplacements`（整组替换，
+  处理同一补丁在不同文件用不同新文案）、`obsolete`（本轮不适用，显示 `na`）。
+  说明见 [docs/reanchor-overrides.md](docs/reanchor-overrides.md)。
+- **覆盖层加固**：整段 `try` + 入口类型断言。`null`、`{"obsolete":4}`、`patterns` 写成字符串、
+  `drop` 用字符串下标这四类畸形输入，原来会让模块在求值期抛异常、整包加载失败；现在一律退回原表。
+  needle 少于 8 字符、空串、非字符串一律忽略（避免 `split/join` 把引擎文件打烂）。
+- **不改变默认行为**：没有 `purge-reanchor.json` 时与 1.1.75 完全一致。
+
+## English
+
+- **Reanchor override layer (new)**: needles drift when the engine changes. `$DSH_HOME/purge-reanchor.json`
+  now overrides the patch table at load time with `patterns` / `drop` / `patchReplacements` / `obsolete`,
+  so fixes no longer require editing the generated `lib/core.js`. See `docs/reanchor-overrides.md`.
+- **Hardened**: whole override path wrapped in `try` plus type assertions; malformed files (null, wrong
+  types, string indices) fall back to the original table instead of breaking module evaluation.
+  Needles shorter than 8 chars, empty or non-string are ignored.
+- **No default behavior change**: without the override file this release behaves exactly like 1.1.75.
+
 # 1.1.75+upstream.1.1.71
 
 > 数字部分是本分支序号，`+upstream.1.1.71` 是上游基线，规则见 [docs/versioning.md](docs/versioning.md)。
