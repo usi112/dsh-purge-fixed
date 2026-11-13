@@ -1,4 +1,4 @@
-# dsh-purge 1.1.74 — 修复分支 · 专为 DSH Go 适配
+# dsh-purge 1.1.74+upstream.1.1.71 — 修复分支（上游基线 1.1.71）· 专为 DSH Go 适配
 
 > 📱 **本项目主要面向 [DSH Go] 手机版（dsh-go，Android + proot Ubuntu）适配与验证。**
 > 全部修复与测试都在真实 dsh-go 手机上完成（App 1.0.15 / DSH 0.2.2-rc.1 / Node 24.22.1），
@@ -6,6 +6,12 @@
 > 桌面 / Web 端同样可用，但没有针对它做过同等强度的实测。
 >
 > 🌐 [English README](README.en.md)
+
+### 版本号怎么看
+
+`1.1.74+upstream.1.1.71`：`+` 后面是**所基于的上游版本**，前面的数字是**本分支自己的发布序号**。
+本仓库基于上游 `1.1.71`；上游发 `1.1.72`/`1.1.73` 跟这里的数字没有对应关系。
+规则、对照示例与发版检查清单见 [docs/versioning.md](docs/versioning.md)。
 
 > **衍生自 [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) 1.1.71，原作者 小杨（MIT License）。**
 > 原仓库 `YuJunZhiXue/dsh-purge` 目前不可访问；本分支遵循原项目的

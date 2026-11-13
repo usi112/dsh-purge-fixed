@@ -1,5 +1,7 @@
 # 改动清单（1.1.71 → 1.1.72）
 
+> 本分支基线：上游 [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) **1.1.71**（作者 小杨，MIT）。版本规则见 [docs/versioning.md](docs/versioning.md)。
+
 衍生自 [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) 1.1.71，原作者 **小杨**（MIT）。
 本文件逐条列出本分支的全部改动，共 **11 个文件**。
 

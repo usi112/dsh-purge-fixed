@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
 import * as core from "../lib/core.js";
 import * as rules from "../lib/rules.js";
+
+/** 版本信息只有一处真相：package.json。`+upstream.1.1.71` 是上游基线，数字是分支自己的发布序号。 */
+const PKG = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+const VERSION = String(PKG.version || "");
+const BASELINE = String(PKG.dshPurge?.upstream?.version || "");
 
 const args = process.argv.slice(2);
 
@@ -22,6 +28,7 @@ function tallyLine(tally) {
 
 function printStatus(state) {
   const out = [];
+  out.push(`dsh-purge ${VERSION}（上游基线 ${BASELINE}）`);
   out.push("dsh-purge 状态 / Status");
   out.push("  宿主 / surface " + (state.surface || "web"));
   out.push("  DSH_HOME      " + state.dsh_home);
@@ -62,6 +69,7 @@ const CHECK_ACTIONABLE = new Set(["drifted", "pending", "partial"]);
  */
 function printCheckReport(state) {
   const out = [];
+  out.push(`dsh-purge ${VERSION}（上游基线 ${BASELINE}）`);
   out.push("dsh-purge 自检 / check（dry-run，只读）");
   out.push("  宿主 / surface " + (state.surface || "web"));
   out.push("  DSH_HOME      " + state.dsh_home);
@@ -131,8 +139,14 @@ function buildJsonReport(state, mode) {
 }
 
 async function main() {
-  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--check", "--edit", "--help"].includes(a));
+  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--check", "--edit", "--version", "--help"].includes(a));
   const jsonOut = args.includes("--json");
+
+  if (mode === "--version") {
+    console.log(`dsh-purge ${VERSION}（上游基线 ${BASELINE}）`);
+    console.log("  数字部分 = 本分支自己的发布序号；+upstream.X.Y.Z = 所基于的上游版本，规则见 docs/versioning.md");
+    return;
+  }
 
   if (mode === "--help" || args.includes("-h")) {
     console.log(`dsh-purge 用法:
@@ -144,6 +158,7 @@ async function main() {
   dsh-purge --revert          回滚还原
   dsh-purge --uninstall       卸载插件（已应用则先还原）
   dsh-purge --edit            编辑注入文件 prompt-inject.md
+  dsh-purge --version         版本号（含上游基线，例 1.1.74+upstream.1.1.71）
   dsh-purge --help            帮助
 说明: --check / --status 全程只读；--check 即使有未落地项也返回 0，方便脚本解析。`);
     return;

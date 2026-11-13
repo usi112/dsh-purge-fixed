@@ -1,4 +1,4 @@
-# dsh-purge 1.1.74 — Fixed Fork · Built for DSH Go
+# dsh-purge 1.1.74+upstream.1.1.71 — Fixed Fork (upstream baseline 1.1.71) · Built for DSH Go
 
 > 📱 **This fork is adapted and verified for [DSH Go] — the mobile DSH client (Android + proot Ubuntu).**
 > Every fix and test was done on a real DSH Go phone (App 1.0.15 / DSH 0.2.2-rc.1 / Node 24.22.1),
@@ -25,6 +25,13 @@ A [DeepSeek Harness](https://www.deepseek.com/harness/) (DSH) plugin. It does tw
 | **② Code-level patches (82)** | Rewrites DSH source files on disk: approval prompts → "never ask", approval requests auto-granted, sandbox `(deny file-write*)` → `(allow file-write*)`, etc. | **Disabled by default**, requires `--apply` |
 
 ---
+
+## How to read the version
+
+`1.1.74+upstream.1.1.71`: the part after `+` is the **upstream release this fork is based on**; the leading
+numbers are this fork's own release sequence. This repository is based on upstream `1.1.71`; upstream
+`1.1.72`/`1.1.73` do not correspond to these numbers. Rules, before/after examples and the release
+checklist live in [docs/versioning.md](docs/versioning.md).
 
 ## ⚠️ Read this before installing
 

@@ -1,4 +1,6 @@
-# 1.1.74
+# 1.1.74+upstream.1.1.71
+
+> 版本规则见 [docs/versioning.md](docs/versioning.md)：`+upstream.1.1.71` 是本分支的上游基线，数字部分是本分支自己的发布序号，两者不是一个东西。
 
 ## 中文
 
