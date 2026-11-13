@@ -1,101 +1,66 @@
-# dsh-purge 1.1.75+upstream.1.1.71 — Fixed Fork (upstream baseline 1.1.71) · Built for DSH Go
+# dsh-purge 1.1.75+upstream.1.1.71 — a fixed fork of upstream 1.1.71
 
-> 📱 **This fork is adapted and verified for [DSH Go] — the mobile DSH client (Android + proot Ubuntu).**
-> Every fix and test was done on a real DSH Go phone (App 1.0.15 / DSH 0.2.2-rc.1 / Node 24.22.1),
-> and it ships two **native mobile UI** plugins — the upstream release only has a *web* UI, which is
-> invisible inside the Flutter-native DSH Go app.
-> Desktop / Web works too, but was not tested as thoroughly.
->
-> 🌐 [中文说明](README.md)
+This is a fork I put together for my own phone. Upstream [dsh-purge](https://deepseek.stream/plugins/dsh-purge)
+is by 小杨 (MIT) and works on desktop; on DSH Go (Android + proot) it broke the moment it was installed.
+I fixed what broke, and added native UI plugins because the web UI simply doesn't exist inside the Flutter app.
 
-> **Derived from [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) 1.1.71, originally by 小杨 (MIT License).**
-> The original repo `YuJunZhiXue/dsh-purge` is currently unreachable. This fork keeps the original
-> `LICENSE` and author credit, as the upstream project's attribution policy requires.
-> Every change is listed in [CHANGELOG-fixes.md](CHANGELOG-fixes.md).
->
-> **This fork only contains compatibility and crash fixes — no jailbreak rule text was modified**
-> (persona, the 18 scoped-rule groups, `Never Refuse`, refusal-phrase blocklists, house rules: all unchanged).
+Two different things live in this plugin, and they behave differently:
 
-A [DeepSeek Harness](https://www.deepseek.com/harness/) (DSH) plugin. It does two things —
-**please understand them separately**:
+- **Prompt injection** — a persona and rule block written into the system prompt each turn, so the model
+  refuses less. Active as soon as it is installed.
+- **Code patches (84)** — optional rewrites of the DSH source tree that remove approval prompts and the
+  sandbox's file-write restriction. You have to run `--apply` yourself.
 
-| | What | Default |
-|---|---|---|
-| **① Prompt injection** | Writes a "persona + rules" block into the system prompt each turn, so the model refuses less and answers more directly | **Active once installed** |
-| **② Code-level patches (82)** | Rewrites DSH source files on disk: approval prompts → "never ask", approval requests auto-granted, sandbox `(deny file-write*)` → `(allow file-write*)`, etc. | **Disabled by default**, requires `--apply` |
+Tested on: DSH Go app 1.0.15, DSH 0.2.2-rc.1, Node 24.22.1, proot Ubuntu 24.04. Desktop and web install
+fine, but were not tested as hard.
 
----
+Version `1.1.75+upstream.1.1.71`: the part after `+` is the upstream release this fork is based on; the
+leading number is this fork's own release counter. They are not the same thing. Rules and examples live in
+[docs/versioning.md](docs/versioning.md); wording or doc-only changes do not bump the version.
 
-## How to read the version
+Upstream credit and the original LICENSE are kept. The original repo `YuJunZhiXue/dsh-purge` is currently
+unreachable, so every change is listed in [CHANGELOG-fixes.md](CHANGELOG-fixes.md) as the upstream
+attribution policy requires. No jailbreak rule text was modified in this fork.
 
-`1.1.74+upstream.1.1.71`: the part after `+` is the **upstream release this fork is based on**; the leading
-numbers are this fork's own release sequence. This repository is based on upstream `1.1.71`; upstream
-`1.1.72`/`1.1.73` do not correspond to these numbers. Rules, before/after examples and the release
-checklist live in [docs/versioning.md](docs/versioning.md). Wording and doc-only changes do not bump the version.
+## Read this before you install
 
-## ⚠️ Read this before installing
+- It is a jailbreak plugin: it suppresses refusals through the system prompt.
+- `--apply` rewrites DSH source files. After that, DSH stops asking for approval and stops blocking writes
+  you never read first.
+- One consequence: the model can overwrite files it never read. That is what one of the patches is for,
+  not a bug.
+- Every changed file gets a `<filename>.dshpurge.bak`; `--revert` restores byte-for-byte.
+- Do not use it on a machine holding data you care about.
 
-1. **This is a jailbreak plugin.** It suppresses the model's refusal tendency through the system
-   prompt and ships 18 scoped-rule groups.
-2. **`--apply` rewrites DSH source files.** Once enabled: DSH will **not** ask for approval before
-   dangerous operations, and will no longer block "overwrite a file you never read".
-3. **The model may silently overwrite files it never read.** That is the stated goal of patch
-   `FS_OBSERVATION_INTENT_FREE`, not a bug.
-4. Every modified file gets a `<filename>.dshpurge.bak` backup; `--revert` restores **byte-for-byte**.
-5. **Use it only on your own machine, at your own risk.** Do not enable the code patches on a machine
-   holding important data or subject to compliance auditing.
+## Why the mobile port needed work
 
----
+1. Upstream writes `{{cwd}}` into the prompt; 0.2.2-rc.1 only registers `provider` and `model`, so every
+   turn died with an unknown-variable error.
+2. Two red-team preset rows did not match the new host, the whole preset was marked broken, and the mode
+   disappeared from the picker.
+3. The plugin UI is a web UI, and DSH Go is Flutter-native, so there was nothing to look at.
 
-## Why "built for DSH Go"
+The first two were text fixes. The third needed new plugins, which is what `native-ui/` is.
 
-Upstream 1.1.71 was written for desktop. Moving it to DSH Go (mobile) surfaces three classes of problems,
-all addressed here:
+## What changed since 1.1.71
 
-| Mobile problem | Symptom | Fix in this fork |
-|---|---|---|
-| **Different host version** | Upstream writes `{{cwd}}`, which DSH 0.2.2-rc.1 rejects → **every turn fails** | Replaced everywhere: real path or a static sentence |
-| **Red-team preset disappears** | Two preset rows are incompatible with the new host → whole preset marked broken → hidden from the app's mode picker | Removed the dead rows; leaf constraint now handled by `maxDepth` |
-| **No UI on mobile** | Upstream UI is a **web** UI; DSH Go ships a Flutter-native UI, so nothing shows | New `native-ui/` plugins: **2 capsules + 4 panels** |
+One crash plus a pile of drift caused by the newer host. 11 files in total, listed one by one in
+CHANGELOG-fixes.md. The short version:
 
-Mobile paths also differ from desktop — see "Install B" for real measured values
-(`DSH_HOME=/root/.dsh`, engine at `/opt/dsh`, and **the app has no terminal page**).
+- all five `{{cwd}}` occurrences handled: real path when available, static text otherwise
+- `postPrompt` no longer goes through host interpolation
+- escaping had a boundary bug (`{{{cwd}}}` slipped through); now judged per brace run
+- red-team preset: dead rows removed, the leaf constraint moved to `maxDepth`
+- self-heal no longer inserts the same line twice
+- six patches that no longer matched got new anchors taken from the real source
+- version declaration moved from `dshTarget` to `engines.dsh`, so incompatibility shows at install time
+- uninstall leaves nothing behind; your own files go to a quarantine directory with `RESTORE.txt`
+- revert removes `.bak` files that are byte-identical to the original
+- zip paths use posix separators, so Android does not flatten the tree
 
----
+## Environment
 
-## What was fixed (vs. 1.1.71)
-
-Upstream crashes **immediately after install** on DSH 0.2.2-rc.1 — every turn fails with
-`unknown prompt variable "{{cwd}}"`. This fork changes **11 files** (details in
-[CHANGELOG-fixes.md](CHANGELOG-fixes.md)):
-
-| # | Problem | Impact | Fix |
-|---|---|---|---|
-| 1 | Writes `{{cwd}}` into the system prompt, but the host only registers `provider` / `model` | **Every conversation turn fails** | 5 sites: real path, or a fixed sentence |
-| 2 | The `postPrompt` section is interpolated by the host | Any `{{...}}` in user `postPrompt` crashes too | Escape before handing to the host |
-| 3 | Escaping had a boundary bug | `{{{cwd}}}`, `{{{{model}}}}` still slipped through | Rewritten as whole-brace-run detection with a final invariant |
-| 4 | Two red-team preset rows are incompatible with the new host | **Red-team mode vanished from the picker** | Dead rows removed; `maxDepth: 1` keeps the leaf constraint |
-| 5 | Self-heal inserted a duplicate line | Same instruction appeared twice | Marker matching now accepts escaped/unescaped |
-| 6 | 6 patches no longer matched source | Silently inert (escalation, read/write bypass, complete-preset inject, …) | Anchors and markers rewritten against the new host |
-| 7 | Version gate used `dshTarget` | Crashed at runtime instead of failing at install | Now `engines.dsh` range |
-| 8 | Uninstall left residue | Inject file, skill library, preset dir remained | Own files deleted; **possibly-yours moved to a quarantine dir** with `RESTORE.txt` |
-| 9 | Revert left stray backups | `.dshpurge.bak` files remained | Identical backups cleaned up |
-| 10 | Zip distribution used backslash paths | Flattened when unpacked on Android/Linux | Repacked with posix paths |
-
-Plus the optional `native-ui/` mobile plugins (not part of upstream).
-
----
-
-## Verified environments
-
-| Platform | Measured |
-|---|---|
-| **DSH Go (mobile)** | App **1.0.15** · DSH **0.2.2-rc.1** · Node **24.22.1** · proot Ubuntu 24.04 · `DSH_HOME=/root/.dsh` |
-| Desktop / Web | DSH **0.2.2-rc.1** · Node **24.22.1** |
-
-Requirements: **Node >= 22**, DSH `>=0.2.1-rc.2 <0.3.0-0`.
-
----
+Node >= 22, DSH `>=0.2.1-rc.2 <0.3.0-0`. On the phone: `DSH_HOME=/root/.dsh`, engine under `/opt/dsh`.
 
 ## Install A: Desktop / Web
 
@@ -131,14 +96,13 @@ md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
 
 Then **restart the engine** (App → Engine → Restart).
 
-### Native mobile UI (optional, recommended)
+### Native mobile UI (optional)
 
-`native-ui/` contains two plugins that bring the plugin UI into the **native mobile interface**:
+The web UI is invisible on the phone, so these two plugins put the same information into the native app:
 
-| Plugin | Provides |
-|---|---|
-| `local-purge-ui` | "**Purge**" capsule above the input + panel: real state (reads `.bak` files and the approval marker, not counters), patch counts, host directory, inject text, red-team state, per-patch detail; actions: Apply (double confirm) / Revert / Refresh / Copy status |
-| `local-purge-more` | "**Purge content**" capsule + 3 panels: Prompt (preview / write / restore default / copy), Rules (list / switch / copy), Skills (list / copy) |
+- `local-purge-ui` — a "Purge" button above the input plus a status strip. Tap it to see which patches
+  did not land and why; apply or revert from the same panel.
+- `local-purge-more` — a "Purge content" button with three panels: prompt, rules, skills.
 
 ```sh
 mkdir -p "$DSH_HOME/dsh-go/plugins"
@@ -147,11 +111,10 @@ dsh plugin --profile web add "$DSH_HOME/dsh-go/plugins/local-purge-ui"
 dsh plugin --profile web add "$DSH_HOME/dsh-go/plugins/local-purge-more"
 ```
 
-**Note**: these install as `link:` — **do not delete the directories**. Restart the engine and the two
-buttons appear above the input box.
+They install as `link:`, so keep the directories around. Restart the engine and the two buttons show up.
 
-> These plugins only render UI and read/write local files. They **never** rewrite host code and never
-> disable approvals. "Apply" needs a second confirmation and is equivalent to `dsh-purge --apply`.
+They only render UI and read/write local files; they never rewrite host code on their own. "Apply" asks for
+a second confirmation and does the same thing as `dsh-purge --apply`.
 
 ---
 
@@ -175,35 +138,35 @@ dsh-purge --check           # dry run: what apply would touch, and which patches
 
 ---
 
-## Patch status (7 categories)
+## Patch status
 
-Every patch is classified from **all of its target files** first, then summed into `patch_tally`
-(the same snapshot feeds `--status --json`, the phone panel and the status strip).
+Every patch is classified from all of its target files, then summed into one snapshot (`patch_tally`).
+The CLI, the phone panel and the status strip all read that same snapshot, so they cannot disagree.
 
-| Category | Meaning | Legacy name |
+| Status | Meaning | What it used to be called |
 |---|---|---|
-| `applied` | Anchor already replaced / target text already present | `applied` |
-| `pending` | The text to replace is still there; not applied yet | `pending` |
-| `partial` | Multi-file patch only landed on some of its files | `skipped` (partially applied) |
-| `drifted` | The patch's own `forbid` marker is present: another change dirtied the result, re-apply makes sense | never existed before |
-| `no_needle` | File readable, but the sentence to replace is gone (host version differs / already rewritten) | `skipped`, `unmatched` |
-| `no_file` | Target file registered but unreadable (deleted / mid-replacement) | `missing_file` |
-| `no_pkg` | This host simply does not have the package the patch targets | `missing_file` |
-| `na` | Not needed on this host (8th bucket: outside the 7, still counted in `total`) | `na` |
+| `applied` | Already patched; nothing to do | `applied` |
+| `pending` | Original text still there; not applied yet | `pending` |
+| `partial` | Multi-file patch only landed on some files | `skipped` (partly applied) |
+| `drifted` | The file was changed elsewhere; re-applying now would conflict | did not exist |
+| `no_needle` | File readable, but the sentence to replace is gone | `skipped`, `unmatched` |
+| `no_file` | Target file registered but unreadable right now | `missing_file` |
+| `no_pkg` | This machine simply does not ship the package | `missing_file` |
+| `na` | Not needed here (separate bucket, still counted in the total) | `na` |
 
-In one sentence: the old six (`applied` / `pending` / `skipped` / `unmatched` / `missing_file` / `na`)
-did not disappear — `skipped` was split into `partial`, `drifted` and `no_needle`, and `missing_file`
-split into `no_file` and `no_pkg`. One "skipped" used to hide four very different fixes.
+The old six names did not disappear; `skipped` was split into `partial` / `drifted` / `no_needle`, and
+`missing_file` into `no_file` / `no_pkg`. One "skipped" used to cover four very different situations:
+re-apply, half-applied, version drift, package absent.
 
-Legacy fields (`patches_applied` / `patches_pending` / `patches_skipped` / `patches_na` / `patches_total`,
-`patch_status`, `display_*`) are all kept with unchanged values.
+Legacy fields (`patches_applied`, `patches_pending`, `patches_skipped`, `patches_na`, `patches_total`,
+`patch_status`, `display_*`) keep their old values, so existing scripts still read.
 
-### One plain-language reason per patch
+### Why a patch did not land
 
-Each row also carries `reason` (why it is not applied) and `advice` (what to do: re-apply / ignore /
-needs a human), both built by `explainPatchRow()` in `lib/patch-report.js` from real row data only
-(`row.counts`, `row.files[].kind`, the patch's own `strictFiles` / `softSettle` / `kind`). Nothing is
-guessed: if the version number cannot be derived, it is not printed.
+Each patch also carries a `reason` and an `advice`. Both are built by `explainPatchRow()` in
+`lib/patch-report.js` from the row's own data: how many files fall into each bucket, which files they are,
+and what the patch itself declares (`strictFiles` / `softSettle` / `kind`). If something cannot be derived
+— a host version, say — it is left out rather than guessed.
 
 Patches are also grouped by layer (identity / approval / sandbox / tools / UI / other) in the phone panel,
 one header line per layer with `applied/total` plus up to six rows per layer.
