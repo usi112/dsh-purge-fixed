@@ -36,7 +36,7 @@
   kingcharleslzy-ai 1.6.97 / NANA7MI0 0.4.1), the diff, 12 candidates and attribution notes.
 - Native plugin `local-purge-ui` 0.2.0 → **0.2.1**.
 
-# 1.1.73
+# 1.1.73+upstream.1.1.71
 
 ## 中文
 
@@ -77,6 +77,64 @@
 - **Native UI**: the clean panel gained top-level metrics, per-category grouping (≤10 rows each) and a
   status strip; the "refresh" buttons on three panels actually re-read instead of replaying the cache.
 - **New** `docs/optimization-plan.md` with 13 candidate changes, scoring, panel sketch and acceptance.
+
+# 1.1.72+upstream.1.1.71
+
+> 衍生自 [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) 1.1.71，原作者 **小杨**（MIT License）。
+> 原仓库 `YuJunZhiXue/dsh-purge` 目前不可访问；本分支保留原 LICENSE 与署名。
+
+### 这个版本解决什么
+
+原版 1.1.71 在 **DSH 0.2.2-rc.1** 上**装上即崩**——每轮对话报
+`unknown prompt variable "{{cwd}}"`，整轮失败。本版修复 11 个文件：
+
+| # | 问题 | 修复 |
+|---|---|---|
+| 1 | 往系统提示词写宿主未注册的 `{{cwd}}`（装上即崩的根因） | 5 处改掉 |
+| 2 | `postPrompt` 段走宿主插值，用户自定义内容也崩 | 先转义再交宿主 |
+| 3 | 转义有花括号边界漏洞（`{{{cwd}}}`） | 改为整段判定 + 终局不变量 |
+| 4 | 红队预设两行与新版宿主不兼容 → **红队模式从下拉消失** | 删失效行，改用 `maxDepth` |
+| 5 | 自愈重复插行 | 判定兼容转义写法 |
+| 6 | 6 条补丁在新宿主上静默失效 | 重写锚点与 markers |
+| 7 | 版本门禁用 `dshTarget` | 改 `engines.dsh` |
+| 8 | 卸载留残留 | 用户内容移到隔离目录，不删 |
+| 9 | 还原留 `.bak` 垃圾 | 逐字节相同即清理 |
+| 10 | zip 用反斜杠路径，安卓解压摊平 | posix 重新打包 |
+
+**未改动任何破甲规则文本**（人设、18 组规则、`Never Refuse` 全部原样）。
+
+### 📱 DSH Go 手机端专属
+
+- 全部修复在真实 dsh-go 手机上验证：**App 1.0.15 · DSH 0.2.2-rc.1 · Node 24.22.1 · proot Ubuntu 24.04**
+- 附带 `native-ui/` 两个**手机原生界面**插件（原版只有网页界面，手机上看不到）：
+  - `local-purge-ui` — 「清洗」胶囊 + 面板（真实状态 / 补丁计数 / 逐条明细，应用 / 还原）
+  - `local-purge-more` — 「破甲内容」胶囊 + 提示词 / 规则集 / 技能库 三个面板
+
+### 下载哪个
+
+| 文件 | 用途 |
+|---|---|
+| `dsh-purge-1.1.72.zip` | **完整包**：插件 + 手机界面插件 + `install.sh` 一键安装 |
+| `dsh-purge-1.1.72.tgz` | 只装主体插件用：`dsh plugin --profile web add dsh-purge-1.1.72.tgz` |
+| `SHA256SUMS.txt` | 校验值 |
+
+### ⚠️ 风险提示
+
+这是**破甲插件**。装上去只启用「提示词注入」；另有 82 条代码级补丁（关审批提示、放开文件写入沙箱）
+**默认不启用**，需手动 `dsh-purge --apply`，会改写 DSH 源码（有 `.bak` 备份，`--revert` 可逐字节还原）。
+启用后 DSH 不再在危险操作前征求同意，模型可能静默覆盖未读过的文件。
+**请只在自己的机器上使用，并自行承担后果。**
+
+### 安装（手机 DSH Go）
+
+```sh
+# 解压后，让 DSH 里的智能体执行（App 没有终端页）
+cd /sdcard/Download/dsh-purge-1.1.72
+bash install.sh
+md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
+# 期望 66479dbe1716c69ade88ac851331b19a
+```
+然后重启引擎。详见 [README.md](https://github.com/usi112/dsh-purge-fixed#readme) / [README.en.md](https://github.com/usi112/dsh-purge-fixed/blob/main/README.en.md)。
 
 # 1.1.71
 

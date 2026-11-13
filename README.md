@@ -13,6 +13,8 @@
 本仓库基于上游 `1.1.71`；上游发 `1.1.72`/`1.1.73` 跟这里的数字没有对应关系。
 规则、对照示例与发版检查清单见 [docs/versioning.md](docs/versioning.md)。
 
+每个版本的更新说明固定写在两处：仓库内 [release-notes.md](release-notes.md)（最新在前的完整流水），以及 GitHub 的 [Releases](https://github.com/usi112/dsh-purge-fixed/releases) 页（一次发布一条）。
+
 > **衍生自 [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) 1.1.71，原作者 小杨（MIT License）。**
 > 原仓库 `YuJunZhiXue/dsh-purge` 目前不可访问；本分支遵循原项目的
 > [署名要求](README.upstream.zh-CN.md)：保留原 `LICENSE` 与作者署名，改动逐条列在
