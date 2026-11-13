@@ -5,6 +5,21 @@ import * as rules from "../lib/rules.js";
 
 const args = process.argv.slice(2);
 
+/** 7 分类的一行摘要。tally 缺失（老调用方传进来的 state）就不打，别打出一排 0 误导人。 */
+function tallyLine(tally) {
+  if (!tally) return "";
+  return "  " + [
+    `已落地 ${tally.applied}`,
+    `待应用 ${tally.pending}`,
+    `部分 ${tally.partial}`,
+    `漂移 ${tally.drifted}`,
+    `原文不对 ${tally.no_needle}`,
+    `文件缺失 ${tally.no_file}`,
+    `包缺失 ${tally.no_pkg}`,
+    `不适用 ${tally.na}`,
+  ].join("  ") + `  合计 ${tally.total}`;
+}
+
 function printStatus(state) {
   const out = [];
   out.push("dsh-purge 状态 / Status");
@@ -25,6 +40,7 @@ function printStatus(state) {
   out.push(`  注入状态       ${state.override_status}`);
   out.push("");
   out.push(`  补丁 ${state.patches_applied}/${core.ALL_PATCHES.length} 已清洗, ${state.patches_pending} 待清洗`);
+  if (state.patch_tally) out.push(tallyLine(state.patch_tally));
   for (const p of core.ALL_PATCHES) {
     const s = state.patch_status[p.id];
     const mark = s === "applied" ? "✓" : s === "pending" ? "✗" : "·";
@@ -35,21 +51,107 @@ function printStatus(state) {
   return out.join("\n");
 }
 
+/** --check 明细的排序权重：能动手的排前面（漂移 / 待应用 / 部分），其余只是解释为什么不动。 */
+const CHECK_ORDER = { drifted: 0, pending: 1, partial: 2, no_needle: 3, no_file: 4, no_pkg: 5, na: 6, applied: 7 };
+/** 这三类重打一次有救，其余重打也变不了，别让人白点。 */
+const CHECK_ACTIONABLE = new Set(["drifted", "pending", "partial"]);
+
+/**
+ * --check：只读自检。不 backup、不写宿主、连 shim 都不碰，只把「现在是什么状态」数清楚。
+ * 面板上只说 ✗ 的条目，这里会说清楚是待应用、部分落地、产物漂移，还是包里根本没这个文件。
+ */
+function printCheckReport(state) {
+  const out = [];
+  out.push("dsh-purge 自检 / check（dry-run，只读）");
+  out.push("  宿主 / surface " + (state.surface || "web"));
+  out.push("  DSH_HOME      " + state.dsh_home);
+  out.push("  插件根 / root  " + (state.ai_base || core.missingAiBaseMessage()));
+  out.push(tallyLine(state.patch_tally));
+  out.push("");
+  const todo = (state.patch_rows || [])
+    .filter((row) => row.category !== "applied" && row.category !== "na")
+    .sort((a, b) => (CHECK_ORDER[a.category] ?? 9) - (CHECK_ORDER[b.category] ?? 9) || a.id - b.id);
+  if (todo.length === 0) {
+    out.push("  所有补丁都已落地 / nothing to do");
+    return out.join("\n");
+  }
+  out.push(`  未落地 ${todo.length} 条（按 7 分类排，能动手的在前面）`);
+  for (const row of todo) {
+    const mark = CHECK_ACTIONABLE.has(row.category) ? "✗" : "·";
+    out.push(`    ${mark} [#${String(row.id).padEnd(2)}] ${row.category.padEnd(9)} ${row.name}`);
+    out.push(`         ${row.reason}`);
+    for (const file of row.files || []) {
+      if (file.kind === "applied") continue;
+      out.push(`         ${file.kind.padEnd(9)} ${file.path || "(无路径)"}`);
+    }
+  }
+  const actionable = todo.filter((row) => CHECK_ACTIONABLE.has(row.category)).length;
+  out.push("");
+  out.push(`  其中 ${actionable} 条重打一次有救 / ${actionable} worth a re-apply`);
+  return out.join("\n");
+}
+
+/** --status --json / --check --json：机器可读。旧 key 全部保留，新增 patch_tally 与 rows。 */
+function buildJsonReport(state, mode) {
+  return {
+    mode: mode === "--check" ? "check" : "status",
+    read_only: mode === "--check",
+    surface: state.surface,
+    ai_base: state.ai_base,
+    dsh_home: state.dsh_home,
+    files: state.files,
+    patch_status: state.patch_status,
+    patch_tally: state.patch_tally,
+    rows: state.patch_rows,
+    patches_applied: state.patches_applied,
+    patches_pending: state.patches_pending,
+    patches_skipped: state.patches_skipped,
+    patches_ready: state.patches_ready,
+    patches_na: state.patches_na,
+    patches_total: state.patches_total,
+    display_total: state.display_total,
+    has_backup: state.has_backup,
+    shim_cmd: state.shim_cmd,
+    shim_ps1: state.shim_ps1,
+    shim_bin: state.shim_bin,
+    patch_cache: state.patch_cache,
+  };
+}
+
 async function main() {
-  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help"].includes(a));
+  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--check", "--edit", "--help"].includes(a));
+  const jsonOut = args.includes("--json");
 
   if (mode === "--help" || args.includes("-h")) {
     console.log(`dsh-purge 用法:
-  dsh-purge --status     显示状态
-  dsh-purge --apply      应用全部清洗（提示词+代码+shim+override）
-  dsh-purge --revert     回滚还原
-  dsh-purge --uninstall  卸载插件（已应用则先还原）
-  dsh-purge --edit       编辑注入文件 prompt-inject.md
-  dsh-purge --help       帮助`);
+  dsh-purge --status          显示状态
+  dsh-purge --status --json   显示状态（机器可读，含 patch_tally 与 rows）
+  dsh-purge --check           只读自检：数清 7 类状态 + 未落地明细，不改任何文件
+  dsh-purge --check --json    自检的机器可读输出（read_only: true）
+  dsh-purge --apply           应用全部清洗（提示词+代码+shim+override）
+  dsh-purge --revert          回滚还原
+  dsh-purge --uninstall       卸载插件（已应用则先还原）
+  dsh-purge --edit            编辑注入文件 prompt-inject.md
+  dsh-purge --help            帮助
+说明: --check / --status 全程只读；--check 即使有未落地项也返回 0，方便脚本解析。`);
+    return;
+  }
+
+  // --check 与 --status --json 都只读。--check 强制 fresh，别把上一轮进程里的检测当结论。
+  if (mode === "--check" || (jsonOut && !mode)) {
+    const state = await core.gatherState({ fresh: true });
+    console.log(jsonOut
+      ? JSON.stringify(buildJsonReport(state, "--check"), null, 2)
+      : printCheckReport(state));
+    if (!state.ai_base) process.exit(1);
     return;
   }
 
   const state = await core.gatherState();
+  if (jsonOut && mode === "--status") {
+    console.log(JSON.stringify(buildJsonReport(state, "--status"), null, 2));
+    return;
+  }
   console.log(printStatus(state));
   console.log("");
 
