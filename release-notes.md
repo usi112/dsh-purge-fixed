@@ -2,27 +2,55 @@
 
 > 数字部分是本分支序号，`+upstream.1.1.71` 是上游基线，规则见 [docs/versioning.md](docs/versioning.md)。
 
+## 为什么发这版
+
+- 补丁表是从上游导出的**生成文件**（`lib/core.js` 里的 84 条）。DSH Go 每换一次引擎，needle 就会漂移；
+  以前只能直接改生成文件——改一次，上游一升级就没了，也留不下"这条为什么改"的记录。
+- 给 DSH Go 1.0.16 做适配时还暴露了更严重的问题：**判定把「needle 消失」当成「已经打过」**。引擎换了文案，
+  针自然找不到，状态就显示 `applied`——面板全绿，实际一条效果都没上。审计时 88 条表报 54 条 applied，
+  真正落地的约 51 条，其中还有一条从头到尾没执行、只靠 marker 蒙对的（#88）。
+- 覆盖文件是**外部输入**，之前没有任何校验：`null`、类型写错、下标写成字符串，都会让 `lib/core.js`
+  在模块求值期抛异常，整个插件加载失败——从"面板不显示"变成"服务起不来"。
+
+这版解决这三件事：**把覆盖做成正式能力**、**让畸形输入打不穿**、**默认行为一字不变**。
+
 ## 中文
 
-- **重锚覆盖层（新能力）**：引擎换版后 needle 会漂移。现在可以不改 `lib/core.js`，用
-  `$DSH_HOME/purge-reanchor.json` 在加载期覆盖补丁表，四个字段：
-  `patterns`（按 id+序号换 needle）、`drop`（丢掉失效条目）、`patchReplacements`（整组替换，
-  处理同一补丁在不同文件用不同新文案）、`obsolete`（本轮不适用，显示 `na`）。
-  说明见 [docs/reanchor-overrides.md](docs/reanchor-overrides.md)。
-- **覆盖层加固**：整段 `try` + 入口类型断言。`null`、`{"obsolete":4}`、`patterns` 写成字符串、
-  `drop` 用字符串下标这四类畸形输入，原来会让模块在求值期抛异常、整包加载失败；现在一律退回原表。
-  needle 少于 8 字符、空串、非字符串一律忽略（避免 `split/join` 把引擎文件打烂）。
-- **不改变默认行为**：没有 `purge-reanchor.json` 时与 1.1.75 完全一致。
+- **重锚覆盖层**：`$DSH_HOME/purge-reanchor.json` 在加载期覆盖补丁表，不改生成文件。四个字段：
+  `patterns`（按补丁 id + 替换序号换 needle）、`drop`（丢掉失效条目）、`patchReplacements`
+  （整组替换，用于同一补丁在不同文件要不同新文案）、`obsolete`（本轮不适用，显示 `na`）。
+  格式、边界与回退行为见 [docs/reanchor-overrides.md](docs/reanchor-overrides.md)。
+- **加固**：覆盖路径整段 `try` + 入口类型断言。以下四类畸形输入现在都退回原表，不再中断加载：
+  `null`、`{"obsolete":4}`（该是数组给了数字）、`patterns` 写成字符串（会被当"下标→字符"映射，
+  单字符 needle 会把引擎文件全文替换）、`drop` 下标写成字符串（原来静默无效）。
+  needle 短于 8 字符、空串、非字符串一律忽略。
+- **默认行为不变**：没有覆盖文件时与 1.1.75 完全一致。同一台机器实测：
+  有覆盖 `applied 60 · na 17 · skipped 7 · pending 0`；无覆盖 `applied 60 · pending 6 · na 11 · skipped 6 · missing_file 1`
+  （pending 的 6 条正是本机覆盖里处理掉的那 6 条）。
+- **真实用例**：1.0.16 上 #36 的 needle 是"打过一轮后的中间态"，干净引擎会 miss——用 `patchReplacements`
+  换成干净引擎原文；#87 的 8 条变体里 4 条在 1.0.16 已不存在——用 `drop` 剪掉。
+  这些改动全部留在 JSON 里，生成文件保持上游导出原样。
 
 ## English
 
-- **Reanchor override layer (new)**: needles drift when the engine changes. `$DSH_HOME/purge-reanchor.json`
-  now overrides the patch table at load time with `patterns` / `drop` / `patchReplacements` / `obsolete`,
-  so fixes no longer require editing the generated `lib/core.js`. See `docs/reanchor-overrides.md`.
-- **Hardened**: whole override path wrapped in `try` plus type assertions; malformed files (null, wrong
-  types, string indices) fall back to the original table instead of breaking module evaluation.
+- **Reanchor override layer**: `$DSH_HOME/purge-reanchor.json` overrides the patch table at load time —
+  `patterns` (needle by patch id + replacement index), `drop` (remove dead entries), `patchReplacements`
+  (replace a patch's whole edit list, for cases where different files need different new wording),
+  `obsolete` (not applicable this round, shown as `na`). Format and fallback rules:
+  [docs/reanchor-overrides.md](docs/reanchor-overrides.md).
+- **Hardened**: the whole override path is wrapped in `try` with entry type assertions. Malformed files
+  (null, wrong types, string indices) fall back to the original table instead of breaking module evaluation.
   Needles shorter than 8 chars, empty or non-string are ignored.
-- **No default behavior change**: without the override file this release behaves exactly like 1.1.75.
+- **No default behavior change**: without the override file this release behaves exactly like 1.1.75
+  (measured: with overrides `applied 60 / na 17 / skipped 7 / pending 0`; without, `applied 60 / pending 6 /
+  na 11 / skipped 6 / missing_file 1`).
+
+## 升级
+
+- 从本仓库打包安装：`dsh plugin --profile web add file:<本仓库打出的 tgz>`。
+  **不要让应用内更新去拉上游 `dsh-purge`**——那会用上游 `lib/core.js` 覆盖掉这里的覆盖钩子。
+- 覆盖文件在 `$DSH_HOME` 下，重置运行环境会一起没掉；重装后按 docs/reanchor-overrides.md 放回即可。
+- 改的是引擎文件，装完要重启引擎才生效。
 
 # 1.1.75+upstream.1.1.71
 
