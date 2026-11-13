@@ -119,7 +119,7 @@ md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
 
 | 插件 | 提供 |
 |---|---|
-| `local-purge-ui` | 输入框上方「**清洗**」胶囊 + 一行**状态条**（点开面板）+ 清洗面板（已生效 / 待应用 / 本机无目标 三个 metric、按原因分组的未生效明细，应用 / 还原 / 刷新 / 复制状态） |
+| `local-purge-ui` | 输入框上方「**清洗**」胶囊 + 一行**状态条**（点开面板）+ 清洗面板（已生效 / 待应用 / 本机无目标 三个 metric、按**层**分组的未生效明细 + 每条一句人话原因与下一步，应用 / 还原 / 刷新 / 复制状态） |
 | `local-purge-more` | 「**破甲内容**」胶囊 + 3 个面板（提示词 / 规则集 / 技能库） |
 
 ```sh
@@ -160,7 +160,8 @@ dsh-purge --check           # 只算不写：这次 apply 会动哪些文件、�
 ## 补丁状态（7 分类）
 
 每条补丁先按它的**所有目标文件**判出一个分类，再汇总成 `patch_tally`
-（`--status --json`、面板、状态条读的都是同一份快照）。分类顺序就是面板上的展示顺序：
+（`--status --json`、面板、状态条读的都是同一份快照）。分类顺序即 `patch_tally` 与 `--check` 明细的排序；
+面板现在按「层」分组（见下文「按层分组」），每条的原因仍按这张表：
 
 | 分类 | 含义 | 旧状态（本分支之前） |
 |---|---|---|
@@ -180,14 +181,54 @@ dsh-purge --check           # 只算不写：这次 apply 会动哪些文件、�
 旧字段（`patches_applied` / `patches_pending` / `patches_skipped` / `patches_na` / `patches_total`、
 `patch_status`、`display_*`）全部保留、数值不变，老脚本和老的 `--status` 文本照旧能读。
 
+### 每条补丁的一句话原因 + 下一步
+
+分类是给程序看的，面板和 `--check` 现在每条还多给一句人话（`row.reason`）与一句建议（`row.advice`）。
+文案全部由 `lib/patch-report.js` 的 `explainPatchRow()` 按**行上的真实数据**拼出来：
+`row.counts`（每个分类各几个文件）、`row.files[].kind`（到底哪几个文件 / 哪个包）、
+补丁自己声明的 `strictFiles` / `softSettle` / `kind`，以及 `status` 与 `category` 不一致的情形（钩子旁路被关掉时）。
+推不出来的东西（例如宿主版本号）不写进文案，不编数字。
+
+| 分类 | 面板 / `--check` 里长什么样 | 下一步 |
+|---|---|---|
+| `applied` | 「改的 N 个文件都已经是新写法，这条已经落地。」 | 别管 |
+| `pending` | 「宿主里原文还在（N 个文件待改写），点「应用清洗」就能打上。」 | 可打 |
+| `partial` | 「这个补丁要改 N 个文件，其中 M 个没匹配上，还有 P 个没打。」 | 还有待改的可打，否则人工看 |
+| `drifted` | 「「dsh-tool-fs/lib/index.js」里已经是被别处改过的写法（命中禁用标记），再打会打架；先还原再重来。」 | 需要人工看 |
+| `no_needle` | 「要找的原文在「dsh-web-app/lib/index.js」里已经改写法了（版本不同或已被别的补丁改写），不是失败。」 | 别管（标了严格匹配的转人工看） |
+| `no_file` | 「登记了目标文件但读不到（dsh-xxx/lib/index.js），可能在升级中被换掉了。」 | 需要人工看 |
+| `no_pkg` | 「这套宿主没有它要改的包（dsh-settings），补丁无处落地，不用管。」 | 别管 |
+
+`--check` 的文本输出直接打印这句话（`row.reason`）；`--status --json` / `--check --json` 的 `rows[]`
+带 `reason` / `advice` / `advice_code` / `advice_tone`，脚本可以直接读。
+
+### 按层分组（身份 / 审批 / 沙箱 / 工具 / 界面 / 其他）
+
+补丁表上的 `layer` 只有「提示词 / 代码 / 工具 / 0.1.5、0.2.0 兼容」，按它分组等于按实现手段分类，
+用户想知道的是「身份句改掉没」「审批还拦不拦」。所以报告层再叠一层语义分组
+（`PATCH_LAYERS` / `patchLayerKey()`）：先看补丁自己写的 `name`，名字认不出来再看它要改的包
+（`row.files[].key`），都认不出来落进「其他」——不按 id 硬编码，也不猜。
+
+- 顺序固定：**身份 → 审批 → 沙箱 → 工具 → 界面 → 其他**。
+- 每层一行「层名 已生效/总数」，层内只列未生效条目（每条带原因与建议）。
+- 守恒：每条补丁恰好落进一层，`groupRowsByLayer()` 的 `total` 加总 = `patch_rows.length` = 82。
+- 这只是**展示**用的：判定、计数、`apply` / `revert` 全都不读它。
+
+**CLI 侧不用改**：`bin/dsh-purge.js` 只是消费 `gatherState()` 的 `patch_rows`，
+`--status --json` 的 `rows[]` 现在自带 `layer_key` / `layer_group` / `reason` / `advice`，
+层名与排序在报告层就定了；`--status` 与 `--check` 的文本排序仍按 7 分类（能动手的排前面），
+要按层看就上面板或读 JSON 的 `layer_group`。
+
 ### 面板与状态条的读数从哪来
 
 - **面板**：`gatherState()` 输出的 `patch_tally`（7 分类 + `na` + `total`）与 `patch_rows`
   （逐条：`id` / `name` / `category` / `reason` / `files`，不含文件正文）。
 - **三个 metric**：已生效 = `tally.applied`；待应用 = `tally.pending`；
   本机无目标 = `tally.no_pkg + tally.na`（这套宿主没有它的位置）。
-- **未生效明细**：按 6 个非 `applied` 分类分组，每组一行小标题 + 最多 10 条，超出写「另有 N 条」，
-  整张列表一次最多 50 行（原生视图协议上限）。`applied` 与 `na` 不进明细。
+- **未生效明细**：按 6 层分组，每层一行「层名 已生效/总数」（没事的层只留这一行），
+  层内最多 6 条未生效条目，每条副标题是那句原因、右侧是「可打 / 别管 / 需要人工看」；
+  整张列表一次最多 50 行（原生视图协议上限），超出的折成一行「另有 N 条未列出」。
+  `applied` 与 `na` 不进明细，只体现在层标题的分子里。
 - **刷新**：面板的「刷新」会先 `invalidatePatchCache()`，再用 `gatherState({ fresh: true })` 重扫，
   所以看到的是此刻的磁盘，不是 30 秒缓存。检测缓存的键含宿主目录，换宿主不会串。
 - **状态条**：只读插件进程内那份快照（面板上一次读取的结果），每 20 秒重画一行，

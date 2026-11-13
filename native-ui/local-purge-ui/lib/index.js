@@ -115,7 +115,13 @@ async function loadPurge() {
   try {
     rules = await import(pathToFileURL(path.join(dir, 'lib', 'rules.js')).href)
   } catch { /* rules 缺失时只影响「提示词是否为空」的预检 */ }
-  loaded = { dir, core, rules }
+  // 报告层：人话原因 / 分层 / 建议都在这一份里，面板不另抄一套文案。
+  // 老版本包没有这个文件时留空，下面各处都有兜底。
+  let report = null
+  try {
+    report = await import(pathToFileURL(path.join(dir, 'lib', 'patch-report.js')).href)
+  } catch { /* 没有报告层就用行上自带的中文 reason */ }
+  loaded = { dir, core, rules, report }
   return loaded
 }
 
@@ -175,22 +181,29 @@ function detectApplied(host) {
   return out
 }
 
-// ─────────────────────── 分类分组（面板明细） ───────────────────────
+// ─────────────────────── 分层分组（面板明细） ───────────────────────
 
 /**
- * 面板上的分组顺序与标题。key 必须与 lib/patch-report.js 的 PATCH_ROW_CATEGORIES 一致：
- * 7 分类里 applied 不进「未生效明细」，na 归到「本机无目标」那个 metric，不进明细。
+ * 面板上的分层顺序与标题。key 必须与 lib/patch-report.js 的 PATCH_LAYERS 一致：
+ * 展示顺序是 身份 → 审批 → 沙箱 → 工具 → 界面 → 其他，层内的补丁按补丁表顺序排。
+ *
+ * 为什么不按 7 分类分组了：分类回答的是「为什么没生效」（原因写在每条下面），
+ * 层回答的是「这块功能到底通没通」。用户先想知道「身份句改掉没 / 审批还拦不拦」，
+ * 再关心具体是哪一类原因，所以外层用层、每条再带分类原因。
  */
-const DETAIL_GROUPS = Object.freeze([
-  { key: 'pending', zh: '待应用', en: 'Pending', icon: 'clock' },
-  { key: 'partial', zh: '部分命中', en: 'Partial', icon: 'warning' },
-  { key: 'drifted', zh: '被覆盖', en: 'Drifted', icon: 'bug' },
-  { key: 'no_needle', zh: '无目标句', en: 'No anchor', icon: 'search' },
-  { key: 'no_file', zh: '文件缺失', en: 'File missing', icon: 'folder' },
-  { key: 'no_pkg', zh: '本机无包', en: 'No package', icon: 'archive' },
+export const LAYERS = Object.freeze([
+  { key: 'identity', zh: '身份', en: 'Identity', icon: 'user' },
+  { key: 'approval', zh: '审批', en: 'Approval', icon: 'check' },
+  { key: 'sandbox', zh: '沙箱', en: 'Sandbox', icon: 'power' },
+  { key: 'tools', zh: '工具', en: 'Tools', icon: 'wrench' },
+  { key: 'ui', zh: '界面', en: 'UI', icon: 'panel' },
+  { key: 'other', zh: '其他', en: 'Other', icon: 'folder' },
 ])
 
-/** 每组标题下的一句人话：告诉用户这一档该怎么处理，而不是只给一个红叉。 */
+/**
+ * 老版本 core（没有 layer_group / reason）时的兜底文案：
+ * 只给「这一档大概是什么情况」，真实数字一律不编。
+ */
 const GROUP_HINTS = Object.freeze({
   pending: ['锚点还在，点「应用清洗」就会落地。', 'Anchor found: Apply will land it.'],
   partial: ['多文件补丁只落地了一部分，建议重新应用一次。', 'Only part of a multi-file patch landed; apply again.'],
@@ -200,8 +213,8 @@ const GROUP_HINTS = Object.freeze({
   no_pkg: ['这套宿主没有该补丁指向的包，补丁无处落地。', 'This host does not ship the package this patch targets.'],
 })
 
-/** 每类最多列几条；列表总条数上限（协议：单个 list ≤ 50 条）。 */
-const GROUP_LIMIT = 10
+/** 每层最多列几条；列表总条数上限（协议：单个 list ≤ 50 条）。 */
+const LAYER_LIMIT = 6
 const LIST_LIMIT = 50
 
 const isEn = (localeStr) => String(localeStr || '').startsWith('en')
@@ -213,70 +226,116 @@ function shortName(row, en) {
   return name.length > 28 ? `${name.slice(0, 27)}…` : name
 }
 
-/** 一条补丁的一句话原因：优先用本插件自己的双语表，回落到 core 给的中文 reason。 */
-function rowReason(row, en) {
-  const key = String(row?.category || '')
-  if (GROUP_HINTS[key]) return en ? GROUP_HINTS[key][1] : GROUP_HINTS[key][0]
-  const fallback = String(row?.reason || '').trim()
-  return fallback || (en ? 'Not applied' : '未生效')
+/**
+ * 一条补丁的一句话原因：优先问报告层的 explainPatchRow（数据同源，中英都有），
+ * 老包没有这一层时退回行上带的中文 reason，最后才用分类兜底句。
+ */
+function rowReason(row, en, report) {
+  if (report && typeof report.explainPatchRow === 'function') {
+    try {
+      const explained = report.explainPatchRow(row, en ? 'en' : 'zh')
+      if (explained && explained.reason) return explained.reason
+    } catch { /* 落到下面的兜底 */ }
+  }
+  if (!en && row && row.reason) return String(row.reason)
+  const hint = GROUP_HINTS[String(row?.category || '')]
+  if (hint) return en ? hint[1] : hint[0]
+  return en ? 'Not applied' : '未生效'
+}
+
+/** 下一步建议：可打 / 别管 / 需要人工看。行上有就直接用，没有就用报告层重算。 */
+function rowAdvice(row, en, report) {
+  if (report && typeof report.explainPatchRow === 'function') {
+    try {
+      const explained = report.explainPatchRow(row, en ? 'en' : 'zh')
+      if (explained && explained.advice) return explained.advice
+    } catch { /* 落到下面的兜底 */ }
+  }
+  const advice = String((row && row.advice) || '')
+  return advice || (en ? 'Leave it' : '别管')
+}
+
+/** 一条补丁属于哪一层：新 core 直接给了 layer_key；没有就借报告层的同一套规则。 */
+function layerKeyOf(row, report) {
+  const key = String((row && row.layer_key) || '')
+  if (LAYERS.some((layer) => layer.key === key)) return key
+  if (report && typeof report.patchLayerKey === 'function') {
+    try { return String(report.patchLayerKey(row) || 'other') } catch { /* 落到 other */ }
+  }
+  return 'other'
+}
+
+/** 层内一条明细分不分给用户看：已生效、不适用的不进明细。 */
+function isOpenRow(row) {
+  const category = String((row && row.category) || '')
+  return category !== 'applied' && category !== 'na'
 }
 
 /**
  * 把 patch_rows 折成面板那一个 list 的 items：
- *   每组一行小标题（含条数）→ 最多 10 条明细 → 「另有 N 条」。
+ *   每层一行小标题「层名 已生效/总数」→ 最多 6 条未生效条目（副标题是原因、右侧是建议）
+ *   → 「另有 N 条」→ 全部层都满了还有剩，就最后补一条「另有 M 条未列出」。
  *
- * 为什么折进一个 list 而不是每组一个 list：空分组的 list 在 App 里会画成「暂无数据」，
- * 六组里五组空的时候整页都是占位符。合成一条时，空分组直接不出现，总条数还能自己卡在 50 以内。
+ * 为什么折进一个 list 而不是每层一个 list：空分层的 list 在 App 里会画成「暂无数据」，
+ * 六层里五层没事的时候整页都是占位符。合成一条时，没有未生效项的层只留标题行。
  */
-export function buildDetail(rows, locale) {
+export function buildDetail(rows, locale, report = null) {
   const en = isEn(locale)
-  const buckets = new Map(DETAIL_GROUPS.map((g) => [g.key, []]))
+  const buckets = new Map(LAYERS.map((layer) => [layer.key, { layer, applied: 0, total: 0, open: [] }]))
   for (const row of Array.isArray(rows) ? rows : []) {
-    const key = String(row?.category || '')
-    if (!buckets.has(key)) continue // applied / na 不进明细
-    buckets.get(key).push(row)
+    const key = layerKeyOf(row, report)
+    const bucket = buckets.get(key) || buckets.get('other')
+    bucket.total += 1
+    if (row && row.category === 'applied') bucket.applied += 1
+    if (isOpenRow(row)) bucket.open.push(row)
   }
   const items = []
   let budget = LIST_LIMIT
   let skipped = 0
-  for (const group of DETAIL_GROUPS) {
-    const list = buckets.get(group.key) || []
-    if (list.length === 0) continue
-    // 一组至少要有「标题 + 1 条」的位置，否则整组折进 skipped。
-    if (budget < 2) { skipped += list.length; continue }
-    let take = Math.min(GROUP_LIMIT, list.length, budget - 2)
-    if (take < 1) { skipped += list.length; continue }
-    const rest = list.length - take
-    if (rest > 0 && budget - (1 + take + 1) < 0) take = Math.max(1, budget - 3)
+  for (const layer of LAYERS) {
+    const bucket = buckets.get(layer.key)
+    if (!bucket || bucket.total === 0) continue
+    // 至少留一个位置给标题行，否则整层折进 skipped。
+    if (budget < 1) { skipped += bucket.open.length; continue }
+    const head = en
+      ? `${layer.en} ${bucket.applied}/${bucket.total}`
+      : `${layer.zh} ${bucket.applied}/${bucket.total}`
     items.push({
-      title: `${en ? group.en : group.zh} · ${list.length}`,
-      subtitle: en ? GROUP_HINTS[group.key][1] : GROUP_HINTS[group.key][0],
-      icon: group.icon,
-      tone: 'muted',
+      title: head,
+      subtitle: bucket.open.length === 0
+        ? (en ? 'All applied in this layer.' : '这层全部已生效。')
+        : (en ? `${bucket.open.length} not applied yet.` : `${bucket.open.length} 条还没生效。`),
+      icon: layer.icon,
+      tone: bucket.open.length === 0 ? 'good' : 'muted',
     })
-    for (const row of list.slice(0, take)) {
-      const item = { title: shortName(row, en), icon: 'document' }
-      const reason = rowReason(row, en)
-      if (reason) item.subtitle = reason
-      if (group.key === 'drifted') item.tone = 'bad'
-      else if (group.key === 'pending') item.tone = 'warn'
+    budget -= 1
+    if (bucket.open.length === 0) continue
+    let take = Math.min(LAYER_LIMIT, bucket.open.length, Math.max(0, budget - 1))
+    if (take < 1) { skipped += bucket.open.length; continue }
+    for (const row of bucket.open.slice(0, take)) {
+      const item = {
+        title: shortName(row, en),
+        subtitle: rowReason(row, en, report),
+        trailing: rowAdvice(row, en, report),
+        icon: 'document',
+      }
+      // 语气跟着分类走，表在报告层（CATEGORY_TONES），这里不再抄一份。
+      const category = String((row && row.category) || '')
+      const tones = (report && report.CATEGORY_TONES) || {}
+      const tone = tones[category]
+      if (tone && tone !== 'good') item.tone = tone
       items.push(item)
     }
-    const left = list.length - take
+    budget -= take
+    const left = bucket.open.length - take
     if (left > 0) {
-      items.push({
-        title: en ? `${left} more` : `另有 ${left} 条`,
-        subtitle: en ? 'Copy status for the full list.' : '完整清单可用「复制状态」。',
-        tone: 'muted',
-        icon: 'more',
-      })
+      skipped += left
     }
-    budget -= 1 + take + (left > 0 ? 1 : 0)
   }
   if (skipped > 0) {
     items.push({
       title: en ? `${skipped} more not shown` : `另有 ${skipped} 条未列出`,
-      subtitle: en ? 'The panel shows at most 50 rows.' : '面板一次最多 50 行。',
+      subtitle: en ? 'The panel lists at most 50 rows; Copy status for the rest.' : '面板一次最多 50 行，完整清单用「复制状态」。',
       tone: 'muted',
       icon: 'more',
     })
@@ -290,6 +349,50 @@ export function buildDetail(rows, locale) {
     }]
   }
   return items
+}
+
+/** 一行的分层摘要：「身份 12/12 · 审批 6/10 …」，给 keyValue 与复制报告共用。 */
+export function layerSummaryText(rows, locale, report = null) {
+  const en = isEn(locale)
+  const buckets = new Map(LAYERS.map((layer) => [layer.key, { applied: 0, total: 0 }]))
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const bucket = buckets.get(layerKeyOf(row, report)) || buckets.get('other')
+    bucket.total += 1
+    if (row && row.category === 'applied') bucket.applied += 1
+  }
+  const parts = []
+  for (const layer of LAYERS) {
+    const bucket = buckets.get(layer.key)
+    if (!bucket || bucket.total === 0) continue
+    parts.push(`${en ? layer.en : layer.zh} ${bucket.applied}/${bucket.total}`)
+  }
+  return parts.join(' · ')
+}
+
+/** 同样按层折一遍，但只给「复制状态」用：每层一段，未生效的带原因与建议。 */
+export function detailText(rows, locale, report = null) {
+  const en = isEn(locale)
+  const buckets = new Map(LAYERS.map((layer) => [layer.key, { layer, open: [] }]))
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const bucket = buckets.get(layerKeyOf(row, report)) || buckets.get('other')
+    if (isOpenRow(row)) bucket.open.push(row)
+  }
+  const lines = []
+  for (const layer of LAYERS) {
+    const bucket = buckets.get(layer.key)
+    if (!bucket || bucket.open.length === 0) continue
+    lines.push(`${en ? layer.en : layer.zh}：`)
+    for (const row of bucket.open.slice(0, LAYER_LIMIT)) {
+      const advice = rowAdvice(row, en, report)
+      lines.push(`  #${row.id} ${row.name || ''} — ${rowReason(row, en, report)}（${advice}）`)
+    }
+    if (bucket.open.length > LAYER_LIMIT) {
+      lines.push(en
+        ? `  … +${bucket.open.length - LAYER_LIMIT} more`
+        : `  … 另有 ${bucket.open.length - LAYER_LIMIT} 条`)
+    }
+  }
+  return lines.join('\n')
 }
 
 /**
@@ -344,13 +447,15 @@ const PLACEHOLDER = {
   m_idle_tone: 'muted',
   state: '正在读取…',
   patches: '…',
+  layers: '…',
   host: '…',
   inject: '…',
   redteam: '…',
   hint: '正在读取宿主状态…',
   summary: '正在读取状态…',
-  detail: [{ title: '正在读取明细…', tone: 'muted', icon: 'clock' }],
-  detail_note: '正在统计未生效的补丁…',
+  detail: [{ title: '正在读取分层明细…', tone: 'muted', icon: 'clock' }],
+  detail_note: '正在统计每层的已生效条数…',
+  detail_text: '',
 }
 
 /**
@@ -365,9 +470,9 @@ function remember(value) {
   return value
 }
 
-function stripModel(localeStr) {
+export function stripModel(localeStr, snapshot = stripSnapshot) {
   const en = isEn(localeStr)
-  const snap = stripSnapshot
+  const snap = snapshot
   if (!snap) {
     return { text: en ? 'Purge · open panel' : '清洗 · 待读取', icon: 'wrench', tone: 'muted' }
   }
@@ -388,7 +493,7 @@ function stripModel(localeStr) {
 /** 读一次状态并按 locale 排版；fresh=true 时绕过两处缓存（手动刷新 / 写操作之后用）。 */
 async function collect(options = {}) {
   const en = isEn(options.locale)
-  const { core } = await loadPurge()
+  const { core, report } = await loadPurge()
   return withPinnedHost(async (resolvedHost) => {
     if (options.fresh === true && typeof core.invalidatePatchCache === 'function') {
       // 手动刷新要看到「此刻的磁盘」，core 的 30 秒检测缓存必须一起丢。
@@ -430,7 +535,8 @@ async function collect(options = {}) {
       ? `${applied}/${total} 已生效 · 待 ${pending} · 部分 ${partial} · 被覆盖 ${drifted}`
       : '—'
 
-    const detail = buildDetail(rows, en ? 'en' : 'zh')
+    const detail = buildDetail(rows, en ? 'en' : 'zh', report)
+    const layerLine = layerSummaryText(rows, en ? 'en' : 'zh', report)
     const detailNote = !hostOk
       ? (en ? 'No host found: open the engine and try again.' : '没定位到宿主：先确认引擎在跑，再点刷新。')
       : notApplied > 0
@@ -469,6 +575,7 @@ async function collect(options = {}) {
 
     const summaryLines = [
       en ? `Real state: ${stateText}` : `真实状态：${stateText}`,
+      en ? `By layer: ${layerLine || 'n/a'}` : `分层：${layerLine || '—'}`,
       en ? `Tally: applied ${applied} / pending ${pending} / partial ${partial} / drifted ${drifted}` : `分类计数：已生效 ${applied} · 待应用 ${pending} · 部分 ${partial} · 被覆盖 ${drifted}`,
       en ? `No text match ${noNeedle} · file missing ${noFile} · package absent ${noPkg} · not needed ${na}` : `无目标句 ${noNeedle} · 文件缺失 ${noFile} · 本机无包 ${noPkg} · 不适用 ${na}`,
       en ? `Total ${total} (${cacheNote})` : `合计 ${total} 条（${cacheNote}）`,
@@ -488,6 +595,7 @@ async function collect(options = {}) {
       m_idle_tone: 'muted',
       state: stateText,
       patches: patchesText,
+      layers: layerLine || (en ? 'no data' : '暂无数据'),
       host: hostFull || (en ? 'not found' : '未定位'),
       inject: injectText,
       redteam: redteam.text,
@@ -495,6 +603,7 @@ async function collect(options = {}) {
       detail,
       detail_note: detailNote,
       summary: summaryLines.join('\n'),
+      detail_text: detailText(rows, en ? 'en' : 'zh', report),
     }
   })
 }
@@ -579,11 +688,12 @@ function panelText(localeStr) {
         idle: 'No target',
         idleCap: 'package absent / not needed',
         real: 'Real state',
+        layers: 'By layer',
         counts: 'Tally',
         host: 'Host dir',
         inject: 'Prompt',
         redteam: 'Redteam',
-        detail: 'Not applied, grouped by reason',
+        detail: 'Not applied yet, by layer (name applied/total)',
         apply: 'Apply patches',
         cancel: 'Not now',
         revert: 'Restore',
@@ -599,11 +709,12 @@ function panelText(localeStr) {
         idle: '本机无目标',
         idleCap: '无该包 / 不适用',
         real: '真实状态',
+        layers: '分层',
         counts: '分类计数',
         host: '宿主目录',
         inject: '注入文案',
         redteam: '红队模式',
-        detail: '未生效的补丁（按原因分组）',
+        detail: '未生效的补丁（按层看，层名 已生效/总数）',
         apply: '应用清洗',
         cancel: '再想想',
         revert: '还原',
@@ -655,6 +766,7 @@ export function apply(ctx) {
               type: 'keyValue',
               items: [
                 [T.real, { $: 'data.state' }],
+                [T.layers, { $: 'data.layers' }],
                 [T.counts, { $: 'data.patches' }],
                 [T.host, { $: 'data.host' }],
                 [T.inject, { $: 'data.inject' }],
@@ -693,6 +805,7 @@ export function apply(ctx) {
               m_pending: '—',
               m_idle: '—',
               patches: '—',
+              layers: '—',
               host: '—',
               inject: '—',
               redteam: '—',
