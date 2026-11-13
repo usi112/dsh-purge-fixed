@@ -1,3 +1,45 @@
+# 1.1.73
+
+## 中文
+
+- **补丁状态统一成 7 分类**：`applied / pending / partial / drifted / no_needle / no_file / no_pkg`（外加 `na` 桶）。
+  `gatherState` 新增 `patch_tally` / `patch_rows` / `patch_cache`；旧的 `patches_*`、`patch_status`、
+  `display_patches` 逐字节不变，面板与网页界面不需要跟着改。
+- **检测结果加 30 秒缓存**（键含宿主路径与补丁 id 列表），`apply` / `revert` / `--check` 后自动失效，
+  面板不再每次冷开都扫一遍宿主。
+- **CLI 新增 `--check` 与 `--status --json` / `--check --json`**：`--check` 只读，能动手的排在前面。
+- **备份升级成 manifest**：`$DSH_HOME/dsh-purge/patch-backup/<时间戳>/{manifest.json, files/, restore.sh}`，
+  记 root / surface / dsh 版本 / 每文件 sha256。`revert` 优先用最新 manifest，跨宿主还原会被
+  `rootMismatch` 拒绝；没有 manifest 的老机器仍退回 `.dshpurge.bak`。
+- **apply 改成「先算后写」**：整批算完 → 一次性快照 → 写 → 复核（sha256 + 锚点消失）。
+  任一文件复核失败就整批回滚，并报告 `rolledBack` / `rollbackMissed`，不再留半成品。
+- **补丁软判定迁成声明式字段**：4/25/26 与 5/11/12 改为 `softSettle: true`，`isSettled()` 收敛到
+  `lib/patch-report.js` 一份；#42 的两段结构重写是唯一保留的 id 特判，注释写明了迁移条件。
+- **原生界面**：清洗面板顶部加「已生效 / 待应用 / 本机无目标」，未生效明细按分类分组（每组 ≤10 条）；
+  新增状态条 `清洗 n/m · 待 k`（零磁盘 IO，点击进面板）；修好三个面板「刷新」只回 `{refresh:true}`
+  却读缓存的空转。
+- **新增 `docs/optimization-plan.md`**：后续 13 条候选改动、三列排序、面板草图、不做什么与逐条验收。
+- 实测：apply→revert→apply 字节幂等；故意写坏触发整批回滚；跨宿主备份被拒；全程真引擎零写入。
+
+## English
+
+- **One 7-way patch status model** (`applied / pending / partial / drifted / no_needle / no_file / no_pkg`,
+  plus an `na` bucket). `gatherState` gains `patch_tally` / `patch_rows` / `patch_cache`; every legacy
+  field keeps its exact value, so existing UIs keep working.
+- **30 s detection cache** keyed by host path + patch id list, invalidated by `apply` / `revert` / `--check`.
+- **New CLI modes** `--check`, `--status --json`, `--check --json`; `--check` is read-only and lists
+  actionable rows first.
+- **Manifest backups**: `$DSH_HOME/dsh-purge/patch-backup/<stamp>/{manifest.json, files/, restore.sh}`
+  with root / surface / dsh version / per-file sha256. Revert prefers the newest manifest, refuses a
+  foreign host via `rootMismatch`, and still falls back to `.dshpurge.bak`.
+- **Apply is now compute-then-write**: stage every edit, snapshot once, write, verify (sha256 + anchor
+  gone). Any failed verification rolls the whole batch back and reports `rolledBack` / `rollbackMissed`.
+- **Declarative soft-settle**: patches 4/25/26 and 5/11/12 use `softSettle: true`; `isSettled()` lives in
+  `lib/patch-report.js`. Patch #42 keeps the only remaining id check, with its migration conditions noted.
+- **Native UI**: the clean panel gained top-level metrics, per-category grouping (≤10 rows each) and a
+  status strip; the "refresh" buttons on three panels actually re-read instead of replaying the cache.
+- **New** `docs/optimization-plan.md` with 13 candidate changes, scoring, panel sketch and acceptance.
+
 # 1.1.71
 
 ## 中文

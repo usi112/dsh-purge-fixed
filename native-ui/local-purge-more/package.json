@@ -1,6 +1,6 @@
 {
   "name": "local-purge-more",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "在 dsh-go 原生界面里看 dsh-purge 的三块内容：注入提示词、规则集、红队技能库。只在本机读文件与调用 dsh-purge 自己的函数，不联网。",
   "type": "module",

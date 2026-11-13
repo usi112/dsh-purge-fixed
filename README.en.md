@@ -1,4 +1,4 @@
-# dsh-purge 1.1.72 — Fixed Fork · Built for DSH Go
+# dsh-purge 1.1.73 — Fixed Fork · Built for DSH Go
 
 > 📱 **This fork is adapted and verified for [DSH Go] — the mobile DSH client (Android + proot Ubuntu).**
 > Every fix and test was done on a real DSH Go phone (App 1.0.15 / DSH 0.2.2-rc.1 / Node 24.22.1),
