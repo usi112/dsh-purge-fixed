@@ -1,5 +1,7 @@
 # dsh-purge 1.1.76+upstream.1.1.71 — a fixed fork of upstream 1.1.71
 
+> **Requires DSH Go 1.0.16** (engine `r15-dsh0.2.2-rc.1-node24.22.1`). On 1.0.15 or older, use [1.1.75](https://github.com/usi112/dsh-purge-fixed/releases/tag/v1.1.75%2Bupstream.1.1.71).
+
 This is a fork I put together for my own phone. Upstream [dsh-purge](https://deepseek.stream/plugins/dsh-purge)
 is by 小杨 (MIT) and works on desktop; on DSH Go (Android + proot) it broke the moment it was installed.
 I fixed what broke, and added native UI plugins because the web UI simply doesn't exist inside the Flutter app.

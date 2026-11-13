@@ -1,5 +1,7 @@
 # dsh-purge 1.1.76+upstream.1.1.71 — 基于上游 1.1.71 的修复分支
 
+> **适用环境：DSH Go 1.0.16**（引擎 `r15-dsh0.2.2-rc.1-node24.22.1`）。1.0.15 及更早请用 [1.1.75](https://github.com/usi112/dsh-purge-fixed/releases/tag/v1.1.75%2Bupstream.1.1.71)。
+
 这是我给自己手机折腾出来的一个分支。上游 [dsh-purge](https://deepseek.stream/plugins/dsh-purge) 是 小杨 写的（MIT），
 在桌面跑得好好的，搬到 DSH Go（Android + proot）上装完就崩。我就一点点修过来，顺手把手机上看不到的那部分界面
 补成了原生面板。
