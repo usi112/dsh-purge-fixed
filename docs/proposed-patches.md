@@ -129,7 +129,7 @@ DSH_BASE=/opt/dsh/node_modules/@deepseek-ai node bin/dsh-purge.js --check
 - **解决什么问题**：S2 把「消息一律 followup」判为过度：插话（steer）在 turn 不忙时应该真的插队打断当前步，只在忙/不可用时降级为排队。它同时带**迁移**：见到旧 `[dsh-purge-85]` / `[dsh-purge-86]` 标记会把宿主精确还原成原生写法再打新补丁。
 - **手机是否适用**：技术上适用（锚点全在），**但这是我方语义的反转**。我们现在的实机状态是 `#85 applied`（UI 发消息永远新 turn）、`#86 partial`（公共 `steer()` 是 next-step，另一处针已漂）。也就是说手机上现在「插话永不打折」，而 S2 要回到「能插就插」。
 - **锚点**：`dsh-api-session-controller` 的 steer 分支（`request.action.kind === "steer"` 的可用性守卫、`agent.inbox.remove(itemId)` 之后的处理）与 `dsh-agent-loop` 的 `steer(input)` 入口；新写法保留原生 `steer`，命中不可用守卫时降级为 `followup`。迁移侧：识别并还原 `[dsh-purge-85]`/`[dsh-purge-86]` 两种旧改写。
-- **风险**：中—高。①行为反转，手机上「发消息打断正在跑的 turn」会恢复，用户体感变化；②迁移写错会留下半打状态（`#86` 已经是 partial），最坏情况两条路径语义不一致；③`strictFiles: true` 类补丁一旦针漂会整条不落。
+- **风险**：中—高。①行为反转，手机上「发消息打断正在跑的 turn」会恢复，用户体感变化；②迁移写错会留下「只打了一半」的状态（`#86` 已经是 partial），最坏情况两条路径语义不一致；③`strictFiles: true` 类补丁一旦针漂会整条不落。
 - **验收**：fixture 上 `apply → revert → apply` 幂等；实机 `--check` 后 `#85/#86` 从状态表消失或标 migrated；手工验证三件事：turn 忙时插话进队列、turn 空闲时插话打断、`Ctrl+Enter` 类强制插队不报错。
 - **工作量**：4–6 人时（迁移 + 回归）。
 - **建议**：**先不做**。等用户明确要「插话打断」再上；现在做等于替用户改交互习惯。
@@ -213,7 +213,7 @@ S3 的 `patches/purge-patch.mjs` 有三件事值得抄**思路**：① `probe` �
 
 | 顺序 | 补丁 | 为什么是它 |
 |---|---|---|
-| 1 | **AP-03 重锚定 `#32 / #53 / #60`** | 唯一一条「修现有失效」而非「加新东西」。这三条在真机上是 no_needle，等于网页面身份句、run_code 加宽话术的清洗全失效——破甲仓库的核心项空转。锚点已逐包实测命中，改动局限在补丁表的 `file` 字段与针文本，不动引擎逻辑。 |
+| 1 | **AP-03 重锚定 `#32 / #53 / #60`** | 这是唯一一类「把本来就该生效的补丁修好」，不是「加新东西」。这三条在真机上是 no_needle，等于网页面身份句、run_code 加宽话术的清洗全失效——破甲仓库最核心的几项一直没起作用。锚点已逐包实测命中，改动局限在补丁表的 `file` 字段与针文本，不动引擎逻辑。 |
 | 2 | **AP-01 `SANDBOX_POLICY_BRAND_NEUTRAL`** | 收益/风险比最好：三条锚点逐字命中，纯文案、放行语义不动，和 `#61` 不相交，验收只要两条 grep。加完模型每步读到的策略不再自称某产品。 |
 | 3 | **AP-02 `ASK_USER_WAIT_CAPPED`** | 唯一一条能消除「真卡住」的：`timeout: -1` 让整轮无限等，手机上没有别的出路。锚点实测命中，改动一行，自带可断言的验收（`-1 → ≤300s`，`30 → 30000`）。 |
 
@@ -222,7 +222,7 @@ S3 的 `patches/purge-patch.mjs` 有三件事值得抄**思路**：① `probe` �
 
 ### 最大风险
 
-**不是补丁打坏引擎，是「半打」——多包多针的补丁只命中一部分，落成 `partial` 而没人发现。** 眼下 82 条里已经有 5 条 partial、7 条 no_needle，说明这个风险是现实发生的，不是假设。缓解：新补丁一律带 `multiHit`/`strictFiles` 声明，进 `scripts/patch-regression.mjs` 的 fixture 回归，并把 `--check` 的 partial 计数接到面板上（现在只有 CLI 看得到）。
+**真正的风险不是把引擎打坏，而是「只打了一半」：多包补丁只改中一部分，落在 `partial` 却没人发现。** 眼下 82 条里已经有 5 条 partial、7 条 no_needle，说明这个风险是现实发生的，不是假设。缓解：新补丁一律带 `multiHit`/`strictFiles` 声明，进 `scripts/patch-regression.mjs` 的 fixture 回归，并把 `--check` 的 partial 计数接到面板上（现在只有 CLI 看得到）。
 
 ---
 

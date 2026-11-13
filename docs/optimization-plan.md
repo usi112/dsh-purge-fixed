@@ -190,7 +190,7 @@ stack (v:2, title "dsh-purge 清洗")
 ### 5.2 `--check` 与 `--json`
 - `DSH_BASE=... node bin/dsh-purge.js --check`：`git status --short` 与 `find <fixture> -name '*.dshpurge.bak' | wc -l` 前后**完全不变**（证明没写盘）。
 - 退出码：有待做 → 非 0；全绿 → 0。`echo $?` 校验。
-- `--status --json` 输出带 `schema_version`，且 `--json` 里不含绝对路径以外的私密字段（人工看一遍）。
+- `--status --json` 输出带 `schema_version`，且 `--json` 里不含绝对路径以外的私密字段（需要人工确认一遍）。
 
 ### 5.3 缓存分层
 - 连跑两次 `gatherState` 计时：第二次应从 600 ms 级掉到 10 ms 级（用 `console.time` 包围，实测基线 600 ms）。
@@ -207,7 +207,7 @@ stack (v:2, title "dsh-purge 清洗")
 
 ### 5.6 复制报告
 - 点一次「复制报告」→ 剪贴板长度 ≤ 8000 且含 4 项：commit、宿主版本、tally、未生效明细；用 `pbcopy`/`xclip` 或 App 内粘出来核对。
-- 报告里不得出现 `/root/.dsh` 以外的用户私密路径（人工看）。
+- 报告里不得出现 `/root/.dsh` 以外的用户私密路径（需要人工确认）。
 
 ### 5.7 回归脚本（零依赖）
 - 建 fixture：`mkdir -p /tmp/host-fixture/node_modules && cp -a /opt/dsh/node_modules/@deepseek-ai /tmp/host-fixture/node_modules/`（只这一步就够跑补丁层；**不要**整份 `/opt/dsh`）。

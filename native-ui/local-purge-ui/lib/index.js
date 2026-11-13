@@ -115,7 +115,7 @@ async function loadPurge() {
   try {
     rules = await import(pathToFileURL(path.join(dir, 'lib', 'rules.js')).href)
   } catch { /* rules 缺失时只影响「提示词是否为空」的预检 */ }
-  // 报告层：人话原因 / 分层 / 建议都在这一份里，面板不另抄一套文案。
+  // 报告层：原因文字、分层和处理建议都在这一份里，面板不另抄一套文案。
   // 老版本包没有这个文件时留空，下面各处都有兜底。
   let report = null
   try {
@@ -202,15 +202,15 @@ export const LAYERS = Object.freeze([
 
 /**
  * 老版本 core（没有 layer_group / reason）时的兜底文案：
- * 只给「这一档大概是什么情况」，真实数字一律不编。
+ * 只说明这一档大概是什么情况，具体数字一律不编。
  */
 const GROUP_HINTS = Object.freeze({
-  pending: ['锚点还在，点「应用清洗」就会落地。', 'Anchor found: Apply will land it.'],
-  partial: ['多文件补丁只落地了一部分，建议重新应用一次。', 'Only part of a multi-file patch landed; apply again.'],
-  drifted: ['产物被别的改动弄脏了，先还原再重新应用。', 'The file was altered elsewhere; restore, then apply again.'],
-  no_needle: ['宿主版本不同或已被别的补丁改写，搜索串对不上。', 'Host text differs: the search anchor is not there.'],
-  no_file: ['登记了目标文件但读不到，可能在升级中被替换。', 'A registered target file is unreadable right now.'],
-  no_pkg: ['这套宿主没有该补丁指向的包，补丁无处落地。', 'This host does not ship the package this patch targets.'],
+  pending: ['原文还在，点「应用清洗」就能打上。', 'Anchor found: Apply will land it.'],
+  partial: ['多文件补丁只改了一部分，建议再应用一次。', 'Only part of a multi-file patch landed; apply again.'],
+  drifted: ['文件已经被别处改过，先还原再重新应用。', 'The file was altered elsewhere; restore, then apply again.'],
+  no_needle: ['宿主换了写法，或被别的补丁改过，找不到原文。', 'Host text differs: the search anchor is not there.'],
+  no_file: ['要改的文件现在读不到，可能在升级时被换掉了。', 'A registered target file is unreadable right now.'],
+  no_pkg: ['这台机器没装这条补丁要改的包，用不上。', 'This host does not ship the package this patch targets.'],
 })
 
 /** 每层最多列几条；列表总条数上限（协议：单个 list ≤ 50 条）。 */
@@ -243,7 +243,7 @@ function rowReason(row, en, report) {
   return en ? 'Not applied' : '未生效'
 }
 
-/** 下一步建议：可打 / 别管 / 需要人工看。行上有就直接用，没有就用报告层重算。 */
+/** 处理建议：可以再打一次 / 不用管 / 需要你自己确认。行上有就直接用，没有就用报告层重算。 */
 function rowAdvice(row, en, report) {
   if (report && typeof report.explainPatchRow === 'function') {
     try {
@@ -252,7 +252,7 @@ function rowAdvice(row, en, report) {
     } catch { /* 落到下面的兜底 */ }
   }
   const advice = String((row && row.advice) || '')
-  return advice || (en ? 'Leave it' : '别管')
+  return advice || (en ? 'Leave it' : '不用管')
 }
 
 /** 一条补丁属于哪一层：新 core 直接给了 layer_key；没有就借报告层的同一套规则。 */

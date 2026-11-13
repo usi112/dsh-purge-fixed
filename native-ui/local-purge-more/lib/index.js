@@ -391,7 +391,7 @@ async function collectRules() {
     label: `${r.name || r.id} · ${humanBytes(r.size)}${r.id === active ? ' · 当前' : ''}`,
     value: r.id,
   }))
-  // options 需要至少一项才好看；没有规则时给一条说明项，点它只会得到人话提示。
+  // options 至少要有项才显示得出来；没有规则时放一条说明项，点它只会弹一句提示。
   const optionsForView = options.length > 0
     ? options
     : [{ label: '还没有规则集', value: '__none__' }]

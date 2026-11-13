@@ -60,7 +60,7 @@ function printStatus(state) {
 
 /** --check 明细的排序权重：能动手的排前面（漂移 / 待应用 / 部分），其余只是解释为什么不动。 */
 const CHECK_ORDER = { drifted: 0, pending: 1, partial: 2, no_needle: 3, no_file: 4, no_pkg: 5, na: 6, applied: 7 };
-/** 这三类重打一次有救，其余重打也变不了，别让人白点。 */
+/** 这三类重打一次有救，其余重打也变不了，提示里别让人白点。 */
 const CHECK_ACTIONABLE = new Set(["drifted", "pending", "partial"]);
 
 /**
