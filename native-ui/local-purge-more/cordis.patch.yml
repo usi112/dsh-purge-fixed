@@ -1,0 +1,4 @@
+# id: unique; name must equal "name" in package.json.
+- insert:
+    - id: local-purge-more
+      name: local-purge-more

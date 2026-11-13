@@ -1,0 +1,95 @@
+{
+  "name": "local-purge-more",
+  "version": "0.1.0",
+  "private": true,
+  "description": "在 dsh-go 原生界面里看 dsh-purge 的三块内容：注入提示词、规则集、红队技能库。只在本机读文件与调用 dsh-purge 自己的函数，不联网。",
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.2 <0.3.0-0"
+  },
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "zh": "破甲内容",
+      "en": "Purge content"
+    },
+    "icon": "sparkle",
+    "wants": [
+      "draft"
+    ],
+    "contributes": {
+      "composer.actions": [
+        {
+          "id": "prompt-draft-confirm",
+          "label": {
+            "zh": "存为注入",
+            "en": "Save"
+          },
+          "icon": "save"
+        }
+      ],
+      "panels": [
+        {
+          "id": "prompt-panel",
+          "title": {
+            "zh": "提示词",
+            "en": "Prompt"
+          },
+          "icon": "document",
+          "placement": [
+            "session.tab",
+            "features",
+            "chat.panel"
+          ]
+        },
+        {
+          "id": "rules-panel",
+          "title": {
+            "zh": "规则集",
+            "en": "Rules"
+          },
+          "icon": "list",
+          "placement": [
+            "session.tab",
+            "features",
+            "chat.panel"
+          ]
+        },
+        {
+          "id": "skills-panel",
+          "title": {
+            "zh": "技能库",
+            "en": "Skills"
+          },
+          "icon": "book",
+          "placement": [
+            "session.tab",
+            "features",
+            "chat.panel"
+          ]
+        }
+      ]
+    },
+    "minApp": "1.0.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/usi112/dsh-purge-fixed.git",
+    "directory": "native-ui/local-purge-more"
+  },
+  "keywords": [
+    "dsh-go",
+    "dsh-go-plugin"
+  ]
+}
