@@ -1,6 +1,6 @@
 {
   "name": "local-purge-ui",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "在 dsh-go 原生界面里操作 dsh-purge：输入框上方的「清洗」胶囊 + 面板（看补丁状态、一键应用 / 还原）。只在本机引擎里读写 dsh-purge 的补丁与状态文件，不联网。",
   "type": "module",

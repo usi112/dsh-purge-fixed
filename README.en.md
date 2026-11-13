@@ -1,4 +1,4 @@
-# dsh-purge 1.1.73 — Fixed Fork · Built for DSH Go
+# dsh-purge 1.1.74 — Fixed Fork · Built for DSH Go
 
 > 📱 **This fork is adapted and verified for [DSH Go] — the mobile DSH client (Android + proot Ubuntu).**
 > Every fix and test was done on a real DSH Go phone (App 1.0.15 / DSH 0.2.2-rc.1 / Node 24.22.1),
@@ -160,6 +160,55 @@ dsh-purge --edit        # edit the inject text
 
 **Important**: after `--apply` you **must restart DSH** (the engine reads source into memory at startup).
 Disabling the plugin in the app does **not** undo the patches — they are on-disk changes; use `--revert`.
+
+```sh
+dsh-purge --status --json   # machine-readable: patch_tally (7 categories + na + total) and per-patch rows
+dsh-purge --check           # dry run: what apply would touch, and which patches no longer match
+```
+
+---
+
+## Patch status (7 categories)
+
+Every patch is classified from **all of its target files** first, then summed into `patch_tally`
+(the same snapshot feeds `--status --json`, the phone panel and the status strip).
+
+| Category | Meaning | Legacy name |
+|---|---|---|
+| `applied` | Anchor already replaced / target text already present | `applied` |
+| `pending` | The text to replace is still there; not applied yet | `pending` |
+| `partial` | Multi-file patch only landed on some of its files | `skipped` (partially applied) |
+| `drifted` | The patch's own `forbid` marker is present: another change dirtied the result, re-apply makes sense | never existed before |
+| `no_needle` | File readable, but the sentence to replace is gone (host version differs / already rewritten) | `skipped`, `unmatched` |
+| `no_file` | Target file registered but unreadable (deleted / mid-replacement) | `missing_file` |
+| `no_pkg` | This host simply does not have the package the patch targets | `missing_file` |
+| `na` | Not needed on this host (8th bucket: outside the 7, still counted in `total`) | `na` |
+
+In one sentence: the old six (`applied` / `pending` / `skipped` / `unmatched` / `missing_file` / `na`)
+did not disappear — `skipped` was split into `partial`, `drifted` and `no_needle`, and `missing_file`
+split into `no_file` and `no_pkg`. One "skipped" used to hide four very different fixes.
+
+Legacy fields (`patches_applied` / `patches_pending` / `patches_skipped` / `patches_na` / `patches_total`,
+`patch_status`, `display_*`) are all kept with unchanged values.
+
+### One plain-language reason per patch
+
+Each row also carries `reason` (why it is not applied) and `advice` (what to do: re-apply / ignore /
+needs a human), both built by `explainPatchRow()` in `lib/patch-report.js` from real row data only
+(`row.counts`, `row.files[].kind`, the patch's own `strictFiles` / `softSettle` / `kind`). Nothing is
+guessed: if the version number cannot be derived, it is not printed.
+
+Patches are also grouped by layer (identity / approval / sandbox / tools / UI / other) in the phone panel,
+one header line per layer with `applied/total` plus up to six rows per layer.
+
+### Apply receipt and one-command regression
+
+- `gatherState().patch_receipt` — what the last apply actually did: timestamp, origin, files touched
+  (≤20 shown + total), counts, whether it had to roll back, and the backup directory. Built only from
+  the newest manifest plus current bytes on disk; `null` with a reason when there is nothing to report.
+- `node scripts/patch-regression.mjs --host <…>/node_modules/@deepseek-ai` — hash the tree, apply,
+  revert, compare byte-for-byte, apply again and compare for idempotency. Refuses any path under
+  `/opt/`, prints PASS/FAIL with a failing-file list, and `--json` for machines.
 
 ---
 

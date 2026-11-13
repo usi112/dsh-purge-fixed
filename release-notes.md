@@ -1,3 +1,39 @@
+# 1.1.74
+
+## 中文
+
+- **每条补丁一句话原因 + 一句建议**：`patch_rows[].reason` / `.advice` 由 `explainPatchRow()` 按行上的真实数据拼出
+  （`counts` / `files[].kind` / `strictFiles` / `softSettle` / `kind`），`partial` 会带真实数字「要改 N 个，M 个没匹配上」。
+  推不出来的信息（例如宿主版本号）不写，不编数字。兜底文案 7 套，互不相同。
+- **面板与 CLI 按层分组**：身份 / 审批 / 沙箱 / 工具 / 界面 / 其他，由补丁名推导目标包键，认不出落「其他」。
+  每层一行「层名 已生效/总数」，层内最多 6 条（副标题是原因、右侧是建议）；「复制状态」带全量分层清单。
+- **应用回执 `patch_receipt`**：最近一次 apply 的时间、来源、改动文件（≤20 条 + 总数）、计数、是否回滚、备份目录。
+  只从最新 manifest + 现有字节推导；拿不到返回 `null` 并给原因。
+- **一键回归 `scripts/patch-regression.mjs`**：记哈希 → apply → 记变化 → revert → 逐字节比对（必须 0 差异）→ 再 apply → 幂等比对；
+  PASS/FAIL + 失败文件清单；`--json`；路径含 `/opt/` 直接退出 2。实测一次 6.17 秒 PASS。
+- **修 CLI 误报**：没定位到插件根时，`--check` 以前把 82 条全判 `na` 却打印「所有补丁都已落地」；
+  现在明确写「这次什么都没检查」并提示 `--host` / `DSH_BASE`，退出码 1。
+- **新增 `docs/proposed-patches.md`**：社区版补丁集对照（LanJinGod 1.1.73 / kingcharleslzy-ai 1.6.97 / NANA7MI0 0.4.1），
+  差集、12 条候选、署名建议。结论：先重锚 #32/#53/#60（真机已 no_needle），再考虑 2 条文案/超时类新补丁。
+- 原生界面插件 `local-purge-ui` 0.2.0 → **0.2.1**（分层与原因展示）。
+
+## English
+
+- **One plain-language reason and one piece of advice per patch** (`row.reason` / `row.advice`), built from real row
+  data by `explainPatchRow()`; `partial` carries the actual numbers. Nothing is guessed.
+- **Panels and CLI group by layer** (identity / approval / sandbox / tools / UI / other), one `applied/total` header
+  per layer and up to six rows each; "copy status" includes the full grouped listing.
+- **Apply receipt `patch_receipt`**: timestamp, origin, touched files (≤20 shown + total), counts, rollback flag and
+  backup directory — derived only from the newest manifest plus current bytes; `null` with a reason otherwise.
+- **One-command regression** `scripts/patch-regression.mjs`: hash → apply → snapshot diff → revert → byte-for-byte
+  compare → apply again → idempotency compare; PASS/FAIL with failing files; `--json`; refuses `/opt/` paths.
+  Measured 6.17 s per run.
+- **CLI no longer lies**: with no plugin root located, `--check` used to mark all 82 rows `na` and still print
+  "nothing to do"; it now says nothing was checked, prints the fix, and exits 1.
+- **New** `docs/proposed-patches.md`: comparison against the community patch sets (LanJinGod 1.1.73 /
+  kingcharleslzy-ai 1.6.97 / NANA7MI0 0.4.1), the diff, 12 candidates and attribution notes.
+- Native plugin `local-purge-ui` 0.2.0 → **0.2.1**.
+
 # 1.1.73
 
 ## 中文
