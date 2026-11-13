@@ -11,7 +11,7 @@
 
 `1.1.74+upstream.1.1.71`：`+` 后面是**所基于的上游版本**，前面的数字是**本分支自己的发布序号**。
 本仓库基于上游 `1.1.71`；上游发 `1.1.72`/`1.1.73` 跟这里的数字没有对应关系。
-规则、对照示例与发版检查清单见 [docs/versioning.md](docs/versioning.md)。
+规则、对照示例与发版检查清单见 [docs/versioning.md](docs/versioning.md)；只改措辞或文档时不动版本号。
 
 每个版本的更新说明固定写在两处：仓库内 [release-notes.md](release-notes.md)（最新在前的完整流水），以及 GitHub 的 [Releases](https://github.com/usi112/dsh-purge-fixed/releases) 页（一次发布一条）。
 

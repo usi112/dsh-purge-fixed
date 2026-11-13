@@ -31,7 +31,7 @@ A [DeepSeek Harness](https://www.deepseek.com/harness/) (DSH) plugin. It does tw
 `1.1.74+upstream.1.1.71`: the part after `+` is the **upstream release this fork is based on**; the leading
 numbers are this fork's own release sequence. This repository is based on upstream `1.1.71`; upstream
 `1.1.72`/`1.1.73` do not correspond to these numbers. Rules, before/after examples and the release
-checklist live in [docs/versioning.md](docs/versioning.md).
+checklist live in [docs/versioning.md](docs/versioning.md). Wording and doc-only changes do not bump the version.
 
 ## ⚠️ Read this before installing
 
