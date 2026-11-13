@@ -66,13 +66,25 @@ function printCheckReport(state) {
   out.push("  宿主 / surface " + (state.surface || "web"));
   out.push("  DSH_HOME      " + state.dsh_home);
   out.push("  插件根 / root  " + (state.ai_base || core.missingAiBaseMessage()));
+  // 没定位到宿主时，82 条都会被打成 na —— 那不是「全部落地」，是「根本没看」。
+  // 以前这里会接着打印「所有补丁都已落地」，比报错还坏：让人以为一切正常。
+  if (!state.ai_base) {
+    out.push("");
+    out.push("  ✗ 没定位到引擎插件根 / no plugin root — 这次什么都没检查");
+    out.push("    给 --host 或设 DSH_BASE=<…>/node_modules/@deepseek-ai，再跑一次");
+    out.push("    这次报的 na 是「没看过」，不是「已经打上了」");
+    return out.join("\n");
+  }
   out.push(tallyLine(state.patch_tally));
   out.push("");
   const todo = (state.patch_rows || [])
     .filter((row) => row.category !== "applied" && row.category !== "na")
     .sort((a, b) => (CHECK_ORDER[a.category] ?? 9) - (CHECK_ORDER[b.category] ?? 9) || a.id - b.id);
   if (todo.length === 0) {
-    out.push("  所有补丁都已落地 / nothing to do");
+    const total = state.patch_tally?.total || 0;
+    out.push(total > 0
+      ? `  所有补丁都已落地（${total} 条）/ nothing to do`
+      : "  没有可检查的补丁（补丁表为空）/ no patches in table");
     return out.join("\n");
   }
   out.push(`  未落地 ${todo.length} 条（按 7 分类排，能动手的在前面）`);
