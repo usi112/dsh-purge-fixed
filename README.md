@@ -1,4 +1,4 @@
-# dsh-purge 1.1.74+upstream.1.1.71 — 修复分支（上游基线 1.1.71）· 专为 DSH Go 适配
+# dsh-purge 1.1.75+upstream.1.1.71 — 修复分支（上游基线 1.1.71）· 专为 DSH Go 适配
 
 > 📱 **本项目主要面向 [DSH Go] 手机版（dsh-go，Android + proot Ubuntu）适配与验证。**
 > 全部修复与测试都在真实 dsh-go 手机上完成（App 1.0.15 / DSH 0.2.2-rc.1 / Node 24.22.1），

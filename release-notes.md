@@ -1,3 +1,44 @@
+# 1.1.75+upstream.1.1.71
+
+> 数字部分是本分支序号，`+upstream.1.1.71` 是上游基线，规则见 [docs/versioning.md](docs/versioning.md)。
+
+## 中文
+
+- **重锚三条空转补丁 #32 / #53 / #60**：DSH 0.2.2-rc.1 把锚点搬了家（网页身份句 → `dsh-harness-dev-context`，
+  run_code 加宽话术 → `dsh-tool-executor-ptc`），这三条在真机上一直是 `no_needle`——等于网页面身份、
+  「不要另开服务器」、「沙箱加宽自动放行」三处清洗**一直没有生效**。现在改为指向新包，真机只读 `--check`
+  从「原文不对 7 条」降到 4 条，这三条转为 `pending`（本机未 apply，这是正确读数）。
+- **新增 #89 `SANDBOX_POLICY_BRAND_NEUTRAL`**：`dsh-sandbox-policy` 里三处带品牌词的文案改成中性说法，
+  **允许/拒绝的语义一个字没动**（逐字核对过 `may` / `does not restrict` 的位置）。
+- **新增 #90 `ASK_USER_WAIT_CAPPED`**：`ask_user` 的等待上限从 `-1`（无限）改成 300 秒，
+  秒→毫秒换算正确（`-1 → 300000ms`、`30 → 30000ms`、未填 → 默认值）。以前在手机上超时值一填 `-1`
+  就是整轮无限等，表现为「一直转圈」。
+- **补丁总数 82 → 84。**
+- 顺手修的两处：#60 原来的 `forbid` 和它自己的针逐字相同，重锚后一命中就被判成「漂移」；#60 也不再登记
+  一个在 0.2.2 上完全没有目标文案的文件（会制造假 `partial`）。
+- 验收：/tmp 副本上六条全部 `applied`、`verifyFailures` 为空、回归脚本 PASS（84 条 / 691 文件 / 5.3 秒）；
+  被打过的 6 个文件 `node --check` 全过；真引擎 `/opt/dsh` 零写入（只读 grep 与 `--check`）。
+
+## English
+
+- **Re-anchored #32 / #53 / #60**: DSH 0.2.2-rc.1 moved the anchors (web identity sentence →
+  `dsh-harness-dev-context`, run_code widening copy → `dsh-tool-executor-ptc`). Those three patches had been
+  `no_needle` on the real host, i.e. the web-surface identity, the "do not start a replacement server" line and
+  the sandbox-widening line were never actually patched. They now point at the new packages; a read-only
+  `--check` on the device drops "no needle" from 7 to 4 and turns these three into `pending`.
+- **New #89 `SANDBOX_POLICY_BRAND_NEUTRAL`**: three brand-bearing strings in `dsh-sandbox-policy` become neutral.
+  Allow/deny semantics are untouched, verified character by character.
+- **New #90 `ASK_USER_WAIT_CAPPED`**: `ask_user`'s wait cap goes from `-1` (unbounded) to 300 s with correct
+  second→millisecond conversion (`-1 → 300000ms`, `30 → 30000ms`). On the phone, `-1` meant the turn could
+  hang forever.
+- **Patch count 82 → 84.**
+- Also fixed: #60's `forbid` markers were identical to its own needles (a hit would be reported as `drifted`
+  right after re-anchoring), and #60 no longer lists a file that simply has no target text on 0.2.2
+  (it produced a fake `partial`).
+- Verified on a `/tmp` copy: all six land as `applied`, no verification failures, regression script PASS
+  (84 patches / 691 files / 5.3 s), the six touched files pass `node --check`, and the real engine
+  `/opt/dsh` received zero writes.
+
 # 1.1.74+upstream.1.1.71
 
 > 版本规则见 [docs/versioning.md](docs/versioning.md)：`+upstream.1.1.71` 是本分支的上游基线，数字部分是本分支自己的发布序号，两者不是一个东西。
