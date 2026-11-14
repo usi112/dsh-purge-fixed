@@ -49,6 +49,7 @@
 | `CHANGELOG-fixes.md` | 顶部声明 | 一句「本分支基线：1.1.71」 |
 | `bin/dsh-purge.js` | `--version`、`--status` / `--check` 首行 | 命令行直接看到 `+upstream.1.1.71` |
 | git tag | `v1.1.74+upstream.1.1.71` | 发版时打；历史标签 `v1.1.73`、`v1.1.74` 保留 |
+| GitHub 仓库 About（描述） | 开头那段 `dsh-purge 1.1.xx+upstream.1.1.71 — …` | 仓库元数据，不在代码里，`git grep` 搜不到；改版本号时必须一起改 |
 
 `native-ui/` 下两个私有插件（`local-purge-ui` / `local-purge-more`）**不适用**本规则：它们是本地界面包，
 没有对应的上游，按普通 `0.x` 递增即可。
@@ -57,6 +58,8 @@
 
 ```sh
 node bin/dsh-purge.js --version        # 应输出 1.1.xx+upstream.1.1.71
+curl -s https://api.github.com/repos/usi112/dsh-purge-fixed \
+  | grep -o '"description": "[^"]*"'   # About 描述里也要是当前版本号
 node -e "const p=require('./package.json');console.log(p.version, p.dshPurge.upstream.version)"
 head -1 README.md README.en.md         # 标题里带 +upstream.1.1.71
 grep -n "^# 1\.1\." release-notes.md | head -3
