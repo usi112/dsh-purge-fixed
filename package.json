@@ -1,6 +1,6 @@
 {
   "name": "dsh-purge",
-  "version": "1.1.76+upstream.1.1.71",
+  "version": "1.1.77+upstream.1.1.71",
   "description": "DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词；默认提示词面向国模「小码酱」。Jailbreak for every model — swap prompts per model. 求 Star 收藏 ⭐ 如要二开，请查看署名要求部分。已适配 DSH Go 手机版（含两个原生界面插件）。",
   "type": "module",
   "main": "lib/index.js",
@@ -30,7 +30,6 @@
     "cordis.patch.yml",
     "screenshots.json",
     "README.md",
-    "README.zh-CN.md",
     "LICENSE"
   ],
   "scripts": {
@@ -104,7 +103,7 @@
       "license": "MIT"
     },
     "fork": {
-      "sequence": "1.1.76",
+      "sequence": "1.1.77",
       "label": "fixed"
     }
   }

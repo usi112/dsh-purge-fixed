@@ -1,3 +1,91 @@
+# 1.1.77+upstream.1.1.71
+
+> 数字部分是本分支序号，`+upstream.1.1.71` 是上游基线，规则见 [docs/versioning.md](docs/versioning.md)。
+
+## 适用环境（先核对再装）
+
+与 1.1.76 相同：**DSH Go 1.0.16**（引擎 `r15-dsh0.2.2-rc.1-node24.22.1`）。1.0.15 及更早请继续用 1.1.75。
+本版**没有**改任何补丁 needle，也没有改破甲规则文本，只修工具链自身的缺陷。
+
+## 为什么发这版
+
+这版是一次**代码审计后的缺陷修复**，来源是三份审计报告（core / redteam / client），
+共修 20 条「会真出事」的问题。按影响面分三类：
+
+- **会崩宿主或写坏宿主**：编辑器不存在时崩进程、备份/提示词文件非原子写、文件锁死时回滚后仍报成功。
+- **安全边界**：asar 条目名可越界写、备份 manifest 的外部路径可指到任意文件、技能名可读插件目录外的 `.md`。
+- **状态骗人**：strict 补丁没打上也能放行重启、锚点彻底不匹配仍算「已就绪」。
+
+## 中文
+
+**崩溃与写坏**
+
+- 设置页「编辑提示词」：`EDITOR` 指向不存在的程序时，以前是异步 `'error'` 事件无人监听 →
+  **宿主进程直接退出**；现在先在 PATH 上解析，找不到就返回错误提示，并兜住异步失败。
+- 补丁备份 `.dshpurge.bak`（唯一一份宿主原件）与 `prompt-inject.md` 改为原子写；后者半截会被
+  误判成「用户自己改过」从而永不自动修复，现在不会再产出半截文件。
+- 原子写的临时文件加了随机段，写失败时也会清理，不再在宿主目录里堆积 `*.tmp`。
+
+**安全**
+
+- asar 解包：普通文件分支补上越界校验（以前只有符号链接分支有），条目名带 `..` 直接跳过并告警。
+- 备份还原：manifest 里的根外路径（`external`）现在过白名单（`DSH_HOME`、`profiles/*/node_modules/*`、
+  启动器名），越界记 `unsafe_target` 跳过——以前可以照 manifest 写任意绝对路径。
+- 红队控制台 `skillRead`：技能名禁止 `..`/路径分隔符，再走共享的根目录校验。
+
+**状态与一致性**
+
+- 整批回滚之后，被回滚的补丁行统一标 `write_error`；以前只标出错的那个文件，其余仍显示「已清洗」。
+- `ensureHostClean` 不再把 `pattern_not_found` 从阻断集合里剔掉——strict 补丁没打上就不放行重启。
+- `patchStatusReady`：旧的 `skipped` 不再无条件算「已就绪」，只对 `optional` / 软结算补丁放行；
+  7 分类里的 `no_needle`（锚点找不到）本来就按未完成算，现在两套口径对齐。
+- doctor 的 3 处替换改为逐个判定，部分命中报 `partial`，不再「命中一处就报已处理」。
+- 外部重锚 needle（`purge-reanchor.json`）要求 ≥24 字符且像锚点，且命中多处时跳过——防止
+  一条短 needle 把宿主文件全文替换。**内置补丁的替换语义未改动。**
+
+**红队子系统**
+
+- 子智能体角色稿改为按「本会话/父会话绑定」取靶标，取不到才回落全局指针；读不到会 `warn`。
+- 报告里「照着粘」的 curl：cookie 现在按 `'\''` 转义；模板填充不再把 `$&`、`$1` 当替换语法
+  （密码含 `$1` 时以前会被吞掉或让占位符复活）。
+- `settings.json` / `platform.json` / `current` 三个状态文件改原子写；坏 JSON 先隔离成
+  `.corrupt-<时间戳>` 再从 `.bak` 恢复，不再「解析失败当空配置、下次写入整份清零」。
+
+**构建与脚本**
+
+- `scripts/build-client.mjs` 以前会把 `client.js` 里手改过的演练台修复**整段换回旧版**，还 `exit 0`。
+  现在源码（`lib/redteam/client.js`）与产物已对齐，构建连跑两次零差异；目标块被手改过则拒绝覆盖
+  （`DSH_PURGE_FORCE_EMBED=1` 可强制）。
+- `scripts/redteam-setup.sh` 不再恒 `exit 0`：`--check` 缺工具退出 3、安装不完整退出 4、冒烟未过退出 5；
+  完成标记改叫「安装记录」。
+- `package.json` 的 `files` 去掉了不存在的 `README.zh-CN.md`。
+
+## English
+
+A code-audit fix release: 20 items from three audits (core / redteam / client). No patch needles and no
+jailbreak text changed — only the tooling around them.
+
+- **Crashes / corrupt writes**: `editOverride` no longer kills the host when `$EDITOR` is missing;
+  `.dshpurge.bak` and `prompt-inject.md` are written atomically; temp files get a random suffix and are
+  cleaned up when the write fails.
+- **Security**: asar entries with `..` are skipped (previously only the symlink branch was checked);
+  backup manifest `external` targets are whitelisted (DSH_HOME, `profiles/*/node_modules/*`, launcher names);
+  `skillRead` rejects anything that is not a single skill file name.
+- **Honest status**: a whole-batch rollback now marks every rolled-back patch row as `write_error`;
+  `pattern_not_found` no longer slips past `ensureHostClean`; `skipped` only counts as ready for
+  `optional`/soft-settle patches; the doctor rewrite reports `partial` instead of `patched`.
+- **Redteam**: subagent role text resolves the engagement from the session binding first; curl in reports
+  escapes cookie quotes and stops treating `$&`/`$1` as replacement syntax; settings/config/current are
+  written atomically and corrupted JSON is quarantined and recovered from `.bak`.
+- **Build/scripts**: `build-client.mjs` refuses to overwrite a hand-edited drill block (source and artifact
+  are now in sync, build is idempotent); `redteam-setup.sh` exits non-zero when tools are missing.
+
+## 升级
+
+- 与 1.1.76 相同的安装方式：`dsh plugin --profile web add file:<本仓库打出的 tgz>`，或从本仓库 tar 包更新。
+- 本版改的是插件自身代码，装完**重启宿主**即可；补丁表与重锚覆盖文件不用动。
+- 升级后建议在面板点一次「应用」，让状态按新判据重算一遍（`skipped` 变「未就绪」的条目会显出来）。
+
 # 1.1.76+upstream.1.1.71
 
 > 数字部分是本分支序号，`+upstream.1.1.71` 是上游基线，规则见 [docs/versioning.md](docs/versioning.md)。

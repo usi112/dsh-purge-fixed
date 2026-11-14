@@ -14,10 +14,20 @@
 
 | 字段 | 语义 |
 |---|---|
-| `patterns` | 按「补丁 id → 替换序号 → 新 needle」替换单条 pattern（needle 必须 ≥ 8 字符，空串/非字符串忽略） |
+| `patterns` | 按「补丁 id → 替换序号 → 新 needle」替换单条 pattern（needle 必须 ≥ 24 字符且含非标识符字符，见下「needle 的硬要求」） |
 | `drop` | 按「补丁 id → 序号数组」删除条目；`replacements` 与 `patterns` 两种形态都支持，字符串下标会被 `Number()` 归一 |
 | `patchReplacements` | 整组替换一条补丁的替换表，用于「同一补丁要对不同文件用不同新文案」 |
 | `obsolete` | 该补丁本轮不再适用，实现为 `surfaces = ["__none__"]`，状态显示 `na` |
+
+## needle 的硬要求（1.1.77 起）
+
+apply 对字符串 pattern 是「替换**所有**出现」，所以一条太泛的 needle 会把整份宿主文件改烂：
+
+- **长度 ≥ 24 字符**，且**必须含非标识符字符**（换行、`;`、`{`、`}`、`(`、`)`、`=`、`<`、`>`、`[`、`]` 之一）。
+  `"function"`、`"return "`、`"configure"` 这类不再接受，会被直接忽略（保持原表 needle）。
+- **命中次数必须唯一**：apply 时若这段 needle 在目标文件里出现多次，这条覆盖会被跳过并打印
+  `reanchor needle 命中 N 次，已跳过`，而不是替换全部。
+- 这两条只约束**外部覆盖注入的 needle**；`lib/core.js` 里内置补丁的替换语义没有改动。
 
 ## 安全约定
 

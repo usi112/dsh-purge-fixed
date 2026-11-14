@@ -1,4 +1,4 @@
-# dsh-purge 1.1.76+upstream.1.1.71 — a fixed fork of upstream 1.1.71
+# dsh-purge 1.1.77+upstream.1.1.71 — a fixed fork of upstream 1.1.71
 
 > **Requires DSH Go 1.0.16** (engine `r15-dsh0.2.2-rc.1-node24.22.1`). On 1.0.15 or older, use [1.1.75](https://github.com/usi112/dsh-purge-fixed/releases/tag/v1.1.75%2Bupstream.1.1.71).
 
@@ -16,7 +16,7 @@ Two different things live in this plugin, and they behave differently:
 Tested on: DSH Go app 1.0.15, DSH 0.2.2-rc.1, Node 24.22.1, proot Ubuntu 24.04. Desktop and web install
 fine, but were not tested as hard.
 
-Version `1.1.76+upstream.1.1.71`: the part after `+` is the upstream release this fork is based on; the
+Version `1.1.77+upstream.1.1.71`: the part after `+` is the upstream release this fork is based on; the
 leading number is this fork's own release counter. They are not the same thing. Rules and examples live in
 [docs/versioning.md](docs/versioning.md); wording or doc-only changes do not bump the version.
 
@@ -60,6 +60,12 @@ CHANGELOG-fixes.md. The short version:
 - revert removes `.bak` files that are byte-identical to the original
 - zip paths use posix separators, so Android does not flatten the tree
 
+1.1.77 is an audit-fix release (20 items). No patch needle and no jailbreak text changed — only the tooling:
+host crashes and corrupt writes (missing `$EDITOR`, non-atomic backup/prompt writes), security edges
+(asar entries escaping the target dir, backup-manifest external paths, `skillRead` names), and dishonest
+status (a rolled-back batch still reported as applied, a vanished anchor still counted as done).
+Item by item: the 1.1.77 section in [release-notes.md](release-notes.md).
+
 ## Environment
 
 Node >= 22, DSH `>=0.2.1-rc.2 <0.3.0-0`. On the phone: `DSH_HOME=/root/.dsh`, engine under `/opt/dsh`.
@@ -72,7 +78,7 @@ dsh plugin --profile web add ./
 
 # confirm you got this build
 md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
-# expect: 66479dbe1716c69ade88ac851331b19a
+# expect: e31c299e56f5e63bacb12b427d5668d8
 ```
 
 Then **restart DSH**.
@@ -93,7 +99,7 @@ cd /sdcard/Download/<unpacked-dir>
 dsh plugin --profile web add ./
 
 md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
-# expect: 66479dbe1716c69ade88ac851331b19a
+# expect: e31c299e56f5e63bacb12b427d5668d8
 ```
 
 Then **restart the engine** (App → Engine → Restart).

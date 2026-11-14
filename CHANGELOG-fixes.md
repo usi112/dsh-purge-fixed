@@ -1,9 +1,10 @@
 # 改动清单（1.1.71 → 1.1.72）
 
-> 本分支当前版本 1.1.76+upstream.1.1.71；基线：上游 [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) **1.1.71**（作者 小杨，MIT）。版本规则见 [docs/versioning.md](docs/versioning.md)。
+> 本分支当前版本 1.1.77+upstream.1.1.71；基线：上游 [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) **1.1.71**（作者 小杨，MIT）。版本规则见 [docs/versioning.md](docs/versioning.md)。
 
 衍生自 [`dsh-purge`](https://deepseek.stream/plugins/dsh-purge) 1.1.71，原作者 **小杨**（MIT）。
-本文件逐条列出本分支的全部改动，共 **11 个文件**。
+本文件逐条列出 **1.1.71 → 1.1.72** 那一批改动（共 11 个文件）；1.1.73 之后的修复不在这里，
+按版本记在 [release-notes.md](release-notes.md)。因此下面 `diff -rq | wc -l` 的「11」只对 1.1.72 成立。
 
 所有改动均为**兼容性与崩溃修复**，**未改动任何破甲规则文本**
 （人设、18 组分类规则、`Never Refuse`、拒绝话术清单、House Rules 全部保持原样）。

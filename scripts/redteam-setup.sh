@@ -473,8 +473,8 @@ if [ "$CHECK_ONLY" != 1 ]; then
     echo "fofa_key=$([ -n "$(cur_env FOFA_KEY)" ] && echo configured || echo missing)"
     echo "vps=$([ -f "$VPS_KEY_NOW" ] && echo configured || echo missing)"
   } > "$MARKER"
-  ok "已写完成标记：$MARKER"
-  dim "智能体在 preflight 里会读它来确认环境已就绪"
+  ok "已写安装记录：$MARKER"
+  [ -n "$FAILED" ] && dim "记录里带着 missing_tools 清单：智能体 preflight 会据此判断哪些技能要降级"
 fi
 
 say ""
@@ -484,4 +484,18 @@ say "  2) 进红队模式，指挥智能体第一个动作会跑 redteam_preflig
 say "  3) 直接给靶标单位名开工"
 say ""
 say "日志：$LOG"
+
+# 退出码要能表达"没装全"：以前无论缺多少工具都 exit 0，CI 与上层脚本都拿不到失败信号。
+if [ -n "$FAILED" ]; then
+  if [ "$CHECK_ONLY" = 1 ]; then
+    warn "体检未通过：缺失${FAILED}（--check 模式，仅检查，退出码 3）"
+    exit 3
+  fi
+  warn "安装不完整：缺失${FAILED}（退出码 4；补装后重跑本脚本）"
+  exit 4
+fi
+if [ -n "$WEAK" ]; then
+  warn "以下工具存在但冒烟未通过：${WEAK}（退出码 5；加 --force 重下）"
+  exit 5
+fi
 exit 0

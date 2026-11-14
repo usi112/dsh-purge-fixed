@@ -4039,6 +4039,8 @@ body[data-ds-dark-theme] .dshp-rewind-item span{color:var(--dsw-alias-label-tert
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(req),
     }).then(async (res) => {
+      /* 网关错误页 / 404 会回 HTML：直接 res.json() 抛 SyntaxError，面板显示空白。
+         先取文本再解析，非 JSON 时带状态码返回结构化错误。 */
       const text = await res.text().catch(() => '')
       let data = null
       try { data = text ? JSON.parse(text) : null } catch {

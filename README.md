@@ -1,4 +1,4 @@
-# dsh-purge 1.1.76+upstream.1.1.71 — 基于上游 1.1.71 的修复分支
+# dsh-purge 1.1.77+upstream.1.1.71 — 基于上游 1.1.71 的修复分支
 
 > **适用环境：DSH Go 1.0.16**（引擎 `r15-dsh0.2.2-rc.1-node24.22.1`）。1.0.15 及更早请用 [1.1.75](https://github.com/usi112/dsh-purge-fixed/releases/tag/v1.1.75%2Bupstream.1.1.71)。
 
@@ -14,7 +14,7 @@
 我这边跑的环境：DSH Go App 1.0.15、DSH 0.2.2-rc.1、Node 24.22.1、proot Ubuntu 24.04。
 只在手机上真机验过，桌面和网页版能装能跑，但没做过同等强度的实测。
 
-版本号 `1.1.76+upstream.1.1.71`：加号后面是它基于的上游版本，前面是我这边的发布序号，两个不是一回事。
+版本号 `1.1.77+upstream.1.1.71`：加号后面是它基于的上游版本，前面是我这边的发布序号，两个不是一回事。
 每版干了什么写在 [release-notes.md](release-notes.md) 和 [Releases](https://github.com/usi112/dsh-purge-fixed/releases)；
 版本规则见 [docs/versioning.md](docs/versioning.md)。只改措辞或文档，不动版本号。
 
@@ -55,6 +55,11 @@
 - 还原时把与原文逐字节相同的 `.bak` 清掉，宿主目录不积垃圾。
 - zip 里的反斜杠路径改成 posix，安卓解压不会摊平。
 
+1.1.77 这一版是代码审计后的修复（20 条），不改补丁 needle、不改任何破甲文本，只修工具链本身：
+崩宿主与写坏宿主（编辑器不存在、备份/提示词的非原子写）、安全边界（asar 条目越界、备份 manifest
+外部路径、`skillRead` 技能名）、以及「状态骗人」（回滚后仍报已清洗、锚点消失仍算就绪）。
+逐条见 [release-notes.md](release-notes.md) 的 1.1.77 节。
+
 ## 环境
 
 Node >= 22，DSH `>=0.2.1-rc.2 <0.3.0-0`。手机上实测 `DSH_HOME=/root/.dsh`，引擎在 `/opt/dsh`。
@@ -66,7 +71,7 @@ Node >= 22，DSH `>=0.2.1-rc.2 <0.3.0-0`。手机上实测 `DSH_HOME=/root/.dsh`
 ```sh
 dsh plugin --profile web add ./
 md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
-# 应为 66479dbe1716c69ade88ac851331b19a
+# 应为 e31c299e56f5e63bacb12b427d5668d8
 ```
 
 手机上麻烦一点：引擎在 proot 里，App 又没有终端页，所以下面几条命令得让 DSH 里的智能体替你跑

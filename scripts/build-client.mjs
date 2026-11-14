@@ -69,6 +69,20 @@ if (!client.includes(BEGIN) || !client.includes(END)) {
 const beginAt = client.indexOf(BEGIN);
 const endAt = client.indexOf(END);
 if (beginAt < 0 || endAt < 0 || endAt < beginAt) throw new Error("drill markers out of order");
+
+/**
+ * 覆盖前先比一次：目标块与「由源码生成的内容」不一致，说明有人直接手改过 client.js。
+ * 以前这里无条件覆盖，重跑一次就把线上修复悄悄换成旧版，脚本还报成功（exit 0）。
+ * 要强行覆盖就显式设 DSH_PURGE_FORCE_EMBED=1。
+ */
+const currentBlock = client.slice(beginAt, endAt + END.length);
+if (currentBlock !== fragment && process.env.DSH_PURGE_FORCE_EMBED !== "1") {
+	throw new Error(
+		"client.js 的演练台块与 lib/redteam/client.js 生成结果不一致（有人手改过产物）。\n" +
+		"请把手改搬回 lib/redteam/client.js 后重跑，或设 DSH_PURGE_FORCE_EMBED=1 强制覆盖。"
+	);
+}
+
 client = client.slice(0, beginAt) + fragment + client.slice(endAt + END.length);
 writeFileSync(clientPath, client);
 console.log("embedded drill client into client.js (" + Buffer.byteLength(fragment) + " bytes fragment)");
