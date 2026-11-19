@@ -1,3 +1,65 @@
+# 1.1.78+upstream.1.1.71
+
+> 数字部分是本分支序号，`+upstream.1.1.71` 是上游基线，规则见 [docs/versioning.md](docs/versioning.md)。
+
+## 适用环境（先核对再装）
+
+| 项 | 本版针对 | 怎么核对 |
+|---|---|---|
+| DSH Go（App） | **1.2.0**（versionCode 11181211） | 设置 › 关于，或 `adb shell dumpsys package io.github.ccch1mneyyy.dsh_app \| grep versionName` |
+| 内置引擎 | `r15-dsh0.2.2-rc.1-node24.22.1-ubuntu24.04.5-9e1b527375e0`（DSH 0.2.2-rc.1） | 设置 › 诊断，或 `~/.dsh/dsh-app/diagnostics.md` 的「内置运行时」 |
+
+- **还在 DSH Go 1.0.16**：请继续用 **1.1.77**。1.2.0 换了引擎包，本版把 8 条补丁的锚点按新源码重写，
+  在 1.0.16 上这些新锚点不匹配（旧锚点仍保留，能中的继续中），但 #80 已按 1.2.0 标 `na`，
+  #62 也去掉了 1.0.16 才有的两个目标文件——那两项在 1.0.16 上会少打。
+- 本版**没有**改任何破甲规则文本。
+
+## 为什么发这版
+
+DSH Go 升到 1.2.0 时引擎包被重装，`/opt/dsh` 回到出厂文件，补丁全掉了。按 1.2.0 的源码核对后，
+84 条里 8 条对不上：4 条锚点整段找不到，4 条多文件补丁只中一部分。这版把这 8 条重锚，
+其余一条没动。
+
+## 中文
+
+- **重锚（4 条整段找不到的）**
+  - `#74 ASSEMBLE_BEFORE_PRESTEP`：1.2.0 把 `assemble()` 的入参包进了
+    `dshGoRecall.assemblyContext({…}, recall)`，锚点改成这层包裹后的原文。
+  - `#77 REWIND_DROP_SENT_ON_APPEND`：`this.revised.clear()` 前多了一句 `if (this.revised.size > 0)`。
+  - `#86 SESSION_STEER_ALWAYS_FOLLOWUP`：`case "steer"` 分支前面多了 `dshGoDeletion.assertAdmit(...)`。
+  - `#54 DELIVERABLE_DO_NOT`：整段交付物提示词从 `dsh-client-ui-deliverables` 搬到了
+    `dsh-deliverable-file-references` 的 `FILE_REFERENCE_PROMPT` 常量，目标路径与锚点一起换。
+- **部分命中（3 条）**
+  - `#36 TOOL_FS_ESCALATION_SCHEMA`：1.2.0 的 tool-fs 里是句首大写的 `Approval is auto-granted.`，
+    原来只认小写形式，已改成「任一形态命中即完成」。
+  - `#62 OFFICIAL_TOOL_ASK_FAILOPEN`：审批分支在 1.2.0 只剩 `dsh-tools/lib/pipeline.js`，
+    去掉已不存在的两个目标文件。
+  - `#50 SESSION_REFERENCE_FRAMING_NEUTRAL`：`types/index.js` 官方已改成中立文案，
+    按「无残留即完成」结算。
+- **标 na（1 条）**
+  - `#80 MINIMAL_OFFICIAL_TOOLSET`：1.2.0 官方极简预设本身就带 `persistent-shell`，
+    而且不再含 `tool-web` / `tool-fs-search`，这条的目标形态官方已经提供，本轮显示 `na`。
+- **实测（1.2.0 干净副本）**：`已落地 68 · 待应用 0 · 部分 0 · 漂移 0 · 原文不对 0 · 包缺失 10 · 不适用 6`。
+  一键回归 apply → revert → apply：改动 50 个文件、还原后 **0 差异**、二次 apply **0 差异**，PASS。
+
+## English
+
+Re-anchored 8 of the 84 patches for DSH Go 1.2.0 (engine repacked as
+`r15-…-9e1b527375e0`). Four anchors disappeared (`#74` `assemble()` is now wrapped in
+`dshGoRecall.assemblyContext`, `#77` gained a `revised.size` check, `#86` gained
+`dshGoDeletion.assertAdmit`, `#54` moved to `dsh-deliverable-file-references`), three were
+partially matching (`#36` marker case, `#62` dead target files, `#50` already neutral upstream),
+and `#80` is now provided by the official minimal preset (shown as `na`). No jailbreak text changed.
+Measured on a clean 1.2.0 host: 68 applied, 0 pending, 0 partial; regression apply → revert → apply
+= 0 diff, idempotent.
+
+## 升级
+
+- 装完**重启宿主**，然后在面板点一次「应用」。
+- 从 1.1.77 升上来不需要动 `purge-reanchor.json`；如果你自己写过的 needle 与本次重锚重叠，
+  以你自己的覆盖为准（外部覆盖层优先级更高）。
+- 升到 1.2.0 后引擎会被重装，宿主会回到未打补丁状态，这是 App 的行为，不是插件问题。
+
 # 1.1.77+upstream.1.1.71
 
 > 数字部分是本分支序号，`+upstream.1.1.71` 是上游基线，规则见 [docs/versioning.md](docs/versioning.md)。

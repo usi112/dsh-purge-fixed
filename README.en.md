@@ -1,6 +1,6 @@
-# dsh-purge 1.1.77+upstream.1.1.71 — a fixed fork of upstream 1.1.71
+# dsh-purge 1.1.78+upstream.1.1.71 — a fixed fork of upstream 1.1.71
 
-> **Requires DSH Go 1.0.16** (engine `r15-dsh0.2.2-rc.1-node24.22.1`). On 1.0.15 or older, use [1.1.75](https://github.com/usi112/dsh-purge-fixed/releases/tag/v1.1.75%2Bupstream.1.1.71).
+> **Requires DSH Go 1.2.0** (engine `r15-dsh0.2.2-rc.1-node24.22.1-ubuntu24.04.5-9e1b527375e0`). On 1.0.16 or older, use [1.1.77](https://github.com/usi112/dsh-purge-fixed/releases/tag/v1.1.77%2Bupstream.1.1.71).
 
 This is a fork I put together for my own phone. Upstream [dsh-purge](https://deepseek.stream/plugins/dsh-purge)
 is by 小杨 (MIT) and works on desktop; on DSH Go (Android + proot) it broke the moment it was installed.
@@ -16,7 +16,7 @@ Two different things live in this plugin, and they behave differently:
 Tested on: DSH Go app 1.0.15, DSH 0.2.2-rc.1, Node 24.22.1, proot Ubuntu 24.04. Desktop and web install
 fine, but were not tested as hard.
 
-Version `1.1.77+upstream.1.1.71`: the part after `+` is the upstream release this fork is based on; the
+Version `1.1.78+upstream.1.1.71`: the part after `+` is the upstream release this fork is based on; the
 leading number is this fork's own release counter. They are not the same thing. Rules and examples live in
 [docs/versioning.md](docs/versioning.md); wording or doc-only changes do not bump the version.
 
@@ -78,7 +78,7 @@ dsh plugin --profile web add ./
 
 # confirm you got this build
 md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
-# expect: e31c299e56f5e63bacb12b427d5668d8
+# expect: 8c2e2272e64a67e722ba0e67be6b6576
 ```
 
 Then **restart DSH**.
@@ -99,7 +99,7 @@ cd /sdcard/Download/<unpacked-dir>
 dsh plugin --profile web add ./
 
 md5sum "$DSH_HOME/profiles/web/node_modules/dsh-purge/lib/core.js"
-# expect: e31c299e56f5e63bacb12b427d5668d8
+# expect: 8c2e2272e64a67e722ba0e67be6b6576
 ```
 
 Then **restart the engine** (App → Engine → Restart).
